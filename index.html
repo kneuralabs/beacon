@@ -368,7 +368,7 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
         <input type="password" id="gistTokenInput" placeholder="ghp_…" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:3px;background:var(--bg);color:var(--text);font-size:.85rem;font-family:var(--aptos)">
       </div>
       <div id="gistStatus" style="font-size:.7rem;min-height:1rem;margin-bottom:.6rem"></div>
-      <div style="display:flex;gap:.5rem;justify-content:space-between;align-items:center">
+      <div style="display:flex;gap:.5rem;justify-content:space-between;align-items:center;flex-wrap:wrap">
         <button id="gistDeleteBtn" class="icon-btn icon-btn--danger" title="Delete feeds.json from repo" style="font-size:.7rem">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h10M8 8v5M6 8v5M10 8v5M5 5l.5-2h5l.5 2"/></svg>
           Clear repo data
@@ -1215,6 +1215,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rnd = () => ALPHA[(Math.random() * ALPHA.length) | 0];
     const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
 
+    // Wait for the blackletter web font so glyphs are measured at their real
+    // size (otherwise slow mobile connections clip the tiles with fallback metrics).
+    const ready = document.fonts
+      ? document.fonts.load('600 1rem "Cormorant Garamond"').then(() => document.fonts.ready).catch(() => {})
+      : Promise.resolve();
+    ready.then(build);
+
+    function build() {
     document.querySelectorAll('.bl').forEach((el, idx) => {
       const target = el.textContent.trim();
       el.innerHTML = '';
@@ -1341,6 +1349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       setTimeout(doFlip, idx * STAGGER + 120);
     });
+    }
   })();
 });
 </script>
