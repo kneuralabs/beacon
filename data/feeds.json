@@ -15,5 +15,14 @@
     "msgType": "Announcement",
     "authorRole": "CTO",
     "timestamp": 1780364005102
+  },
+  {
+    "id": "feed_1780365551343",
+    "title": "Kneuralabs Day",
+    "content": "We will celebrate our first year",
+    "msgType": "Event",
+    "authorRole": "CEO",
+    "timestamp": 1780365551343,
+    "eventDate": "2027-02-19"
   }
 ]
