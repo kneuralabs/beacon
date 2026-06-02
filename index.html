@@ -529,8 +529,8 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
           <div class="form-group">
             <label for="mediaUpload" class="file-label">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6l-6 6a3 3 0 0 1-4.2-4.2l6.3-6.3a1.8 1.8 0 0 1 2.5 2.6L5.5 10.4a.75.75 0 0 1-1-1L10 4"/></svg>
-              Attach photo / video
-              <input type="file" id="mediaUpload" accept="image/*,video/*" style="display:none">
+              Attach photo
+              <input type="file" id="mediaUpload" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" style="display:none">
             </label>
             <span id="mediaFileName" style="font-size:.7rem;color:var(--muted);margin-left:.5rem"></span>
           </div>
@@ -650,7 +650,7 @@ async function repoSave() {
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
   // GitHub's Contents API rejects files larger than ~1MB. Fail clearly here.
   if (content.length > 1.4 * 1024 * 1024) {
-    throw new Error('Feeds file too large for the repo (>1MB) — a video or photo is too big to embed.');
+    throw new Error('Feeds file too large for the repo (>1MB) — too many embedded images.');
   }
   const body = {
     message: 'beacon: update feeds ' + new Date().toISOString(),
@@ -975,21 +975,23 @@ function readFileAsDataURL(file) {
   });
 }
 
-// Downscale + re-encode an image so the embedded data URL stays small. This
-// keeps feeds.json under GitHub's 1MB Contents-API limit (a raw phone photo
-// is several MB and gets the commit rejected).
-function compressImage(file, maxDim = 1600, quality = 0.82) {
+// Center-crop an image to 1:1 (already-square images are kept as-is), then
+// downscale + re-encode so the embedded data URL stays small. This keeps
+// feeds.json under GitHub's 1MB Contents-API limit (a raw phone photo is
+// several MB and gets the commit rejected).
+function compressImage(file, size = 1080, quality = 0.82) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
-      let { width, height } = img;
-      const scale = Math.min(1, maxDim / Math.max(width, height));
-      width = Math.round(width * scale); height = Math.round(height * scale);
+      const side = Math.min(img.width, img.height);   // largest centered square
+      const sx = (img.width  - side) / 2;             // centers the subject
+      const sy = (img.height - side) / 2;
+      const out = Math.min(size, side);               // resize, never upscale
       const canvas = document.createElement('canvas');
-      canvas.width = width; canvas.height = height;
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.width = out; canvas.height = out;
+      canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, out, out);
       try { resolve(canvas.toDataURL('image/jpeg', quality)); }
       catch (e) { reject(e); }
     };
@@ -1127,18 +1129,14 @@ async function addPost(title, content) {
   if (type === 'Event') post.eventDate = document.getElementById('eventDate').value;
   const file = document.getElementById('mediaUpload').files[0];
   if (file) {
+    if (!file.type.startsWith('image/')) { showToast('Only image files are allowed'); return; }
     const mediaId = 'media_' + id;
-    await storeMediaBlob(mediaId, file, file.type);
+    // Center-cropped to 1:1 and compressed; embedded so it syncs in feeds.json
+    // and shows on every device, while staying under the 1MB API limit.
+    post.mediaData = await compressImage(file);
+    post.mediaType = 'image/jpeg';
+    await storeMediaBlob(mediaId, await (await fetch(post.mediaData)).blob(), 'image/jpeg');
     post.mediaRef = mediaId;
-    // Embed as data URL so the media syncs in feeds.json and shows on every device.
-    // Images are downscaled/compressed to keep feeds.json under the 1MB API limit.
-    if (file.type.startsWith('image/')) {
-      post.mediaData = await compressImage(file);
-      post.mediaType = 'image/jpeg';
-    } else {
-      post.mediaData = await readFileAsDataURL(file);
-      post.mediaType = file.type;
-    }
   } else if (editingId) {
     const ex = feeds.find(f => f.id === editingId);
     if (ex) {
@@ -1296,6 +1294,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('mediaUpload').addEventListener('change', e => {
     const f = e.target.files[0];
+    if (f && !f.type.startsWith('image/')) {
+      e.target.value = '';
+      document.getElementById('mediaFileName').textContent = '';
+      showToast('Only image files are allowed');
+      return;
+    }
     document.getElementById('mediaFileName').textContent = f ? f.name : '';
   });
 
