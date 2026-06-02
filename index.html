@@ -197,8 +197,18 @@ body{
 .card{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1rem 1.2rem;transition:background .25s,border-color .25s}
 .form-group{margin-bottom:1.2rem}
 .form-group label{font-size:.6rem;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;letter-spacing:.08em;text-transform:uppercase;transition:color .25s}
-.form-group input,.form-group textarea,.form-group select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:var(--aptos);font-size:.85rem;padding:.7rem .8rem;transition:all .2s}
-.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 2px rgba(128,128,128,.12);background:var(--surface)}
+.form-group input,.form-group textarea,.form-group select,.form-group .rich-editor{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:var(--aptos);font-size:.85rem;padding:.7rem .8rem;transition:all .2s}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus,.form-group .rich-editor:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 2px rgba(128,128,128,.12);background:var(--surface)}
+/* ── RICH MESSAGE EDITOR ── */
+.rich-editor{min-height:5.5rem;max-height:18rem;overflow:auto;line-height:1.6;cursor:text;white-space:pre-wrap;word-break:break-word}
+.rich-editor:empty:before{content:attr(data-ph);color:var(--muted2);pointer-events:none}
+.rich-editor b,.rich-editor strong{font-weight:700}
+/* Floating selection toolbar */
+.fmt-bar{position:fixed;z-index:2500;display:none;gap:.12rem;padding:.25rem;background:var(--ink);border-radius:6px;box-shadow:0 4px 18px rgba(0,0,0,.3);align-items:center}
+.fmt-bar.show{display:flex}
+.fmt-bar button{min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:4px;color:var(--bg);cursor:pointer;font-family:var(--aptos);line-height:1;padding:0 .35rem;transition:background .15s}
+.fmt-bar button:hover{background:rgba(150,150,150,.28)}
+.fmt-sep{width:1px;height:18px;background:rgba(150,150,150,.4);margin:0 .15rem}
 
 /* ── ICON BUTTON BASE ── */
 .icon-btn{
@@ -530,7 +540,7 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
             </div>
           </div>
 
-          <div class="form-group"><label>Message</label><textarea id="intContent" rows="4" placeholder="Write your message…"></textarea></div>
+          <div class="form-group"><label>Message <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted2);font-size:.6rem">— select text to format</span></label><div id="intContent" class="rich-editor" contenteditable="true" data-ph="Write your message…"></div></div>
 
           <div class="form-group">
             <label for="mediaUpload" class="file-label">
@@ -556,6 +566,18 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
   </div>
 
   <footer id="footerBar">Feeds · localStorage &nbsp;·&nbsp; Media · IndexedDB &nbsp;·&nbsp; Beacon by Kneuralabs</footer>
+</div>
+
+<!-- Floating text-format toolbar (shows on selection inside the message editor) -->
+<div id="fmtBar" class="fmt-bar" role="toolbar" aria-hidden="true">
+  <button type="button" data-cmd="bold" title="Bold" style="font-weight:800">B</button>
+  <button type="button" data-cmd="italic" title="Italic" style="font-style:italic;font-family:Georgia,serif">I</button>
+  <button type="button" data-cmd="underline" title="Underline" style="text-decoration:underline">U</button>
+  <span class="fmt-sep"></span>
+  <button type="button" data-size="2" title="Small" style="font-size:.7rem">A</button>
+  <button type="button" data-size="3" title="Normal" style="font-size:.92rem">A</button>
+  <button type="button" data-size="5" title="Large" style="font-size:1.15rem">A</button>
+  <button type="button" data-size="6" title="Huge" style="font-size:1.4rem">A</button>
 </div>
 
 <div id="toastMsg" class="toast"></div>
@@ -958,6 +980,91 @@ function showError(msg) { console.error('[beacon]', msg); showToast(msg, 12000);
 function esc(s) {
   return (s || '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 }
+
+// ── RICH MESSAGE: sanitize a small whitelist of inline formatting ──────────────
+// Allows only B/I/U + legacy <font size> + <span style="font-size"> + line breaks,
+// stripping everything else so stored/rendered HTML stays safe.
+const RICH_TAGS = { B:1, STRONG:1, I:1, EM:1, U:1, FONT:1, SPAN:1, BR:1, DIV:1, P:1 };
+function sanitizeRich(html) {
+  const root = document.createElement('div');
+  root.innerHTML = html || '';
+  (function walk(node) {
+    [...node.childNodes].forEach(child => {
+      if (child.nodeType === 3) return;               // text — keep
+      if (child.nodeType !== 1) { node.removeChild(child); return; } // comments etc.
+      walk(child);                                    // clean descendants first
+      if (!RICH_TAGS[child.tagName]) {                // disallowed → unwrap
+        while (child.firstChild) node.insertBefore(child.firstChild, child);
+        node.removeChild(child);
+        return;
+      }
+      [...child.attributes].forEach(a => {
+        const n = a.name.toLowerCase();
+        if (child.tagName === 'FONT' && n === 'size') return;
+        if (child.tagName === 'SPAN' && n === 'style') {
+          const fs = child.style.fontSize;
+          child.removeAttribute('style');
+          if (fs) child.style.fontSize = fs;
+          return;
+        }
+        child.removeAttribute(a.name);
+      });
+    });
+  })(root);
+  return root.innerHTML;
+}
+
+function getEditorHTML() {
+  return sanitizeRich(document.getElementById('intContent').innerHTML).trim();
+}
+function setEditorHTML(val) {
+  const ed = document.getElementById('intContent');
+  // Old plain-text posts (no tags) → preserve their line breaks
+  ed.innerHTML = (val && /<[a-z][\s\S]*>/i.test(val))
+    ? sanitizeRich(val)
+    : esc(val || '').replace(/\n/g, '<br>');
+}
+
+// Floating selection toolbar wiring
+function initRichEditor() {
+  const ed = document.getElementById('intContent');
+  const bar = document.getElementById('fmtBar');
+  if (!ed || !bar) return;
+  const hide = () => bar.classList.remove('show');
+  const place = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed ||
+        !ed.contains(sel.anchorNode) || !ed.contains(sel.focusNode)) { hide(); return; }
+    const r = sel.getRangeAt(0).getBoundingClientRect();
+    if (!r.width && !r.height) { hide(); return; }
+    bar.classList.add('show');
+    const bw = bar.offsetWidth, bh = bar.offsetHeight;
+    let left = Math.max(8, Math.min(r.left + r.width / 2 - bw / 2, innerWidth - bw - 8));
+    let top = r.top - bh - 8; if (top < 8) top = r.bottom + 8;
+    bar.style.left = left + 'px';
+    bar.style.top = top + 'px';
+  };
+  bar.querySelectorAll('button').forEach(b => {
+    b.addEventListener('mousedown', e => e.preventDefault());   // keep the selection
+    b.addEventListener('click', e => {
+      e.preventDefault();
+      ed.focus();
+      if (b.dataset.cmd) document.execCommand(b.dataset.cmd, false, null);
+      else if (b.dataset.size) document.execCommand('fontSize', false, b.dataset.size);
+      place();
+    });
+  });
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement === ed) place();
+  });
+  ed.addEventListener('mouseup', place);
+  ed.addEventListener('keyup', place);
+  ed.addEventListener('blur', () => setTimeout(() => {
+    if (!bar.contains(document.activeElement)) hide();
+  }, 150));
+  addEventListener('scroll', () => { if (bar.classList.contains('show')) place(); }, true);
+  addEventListener('resize', hide);
+}
 function fmtDate(ts) {
   const d = new Date(ts);
   return d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) + ' · ' +
@@ -1082,10 +1189,11 @@ async function renderFeeds() {
       // Latest post shows in full; older posts collapse to a summary + "Show more…"
       let bodyHtml = '';
       if (item.content) {
-        const collapse = !featured && item.content.length > 140;
+        const plainLen = item.content.replace(/<[^>]*>/g, '').length;
+        const collapse = !featured && plainLen > 140;
         bodyHtml =
           '<div class="item-content' + (collapse ? ' item-content--clamp' : '') + '"' +
-            (poster ? ' style="margin-top:.5rem"' : '') + '>' + esc(item.content) + '</div>' +
+            (poster ? ' style="margin-top:.5rem"' : '') + '>' + sanitizeRich(item.content) + '</div>' +
           (collapse ? '<button class="show-more" onclick="toggleMore(this)">Show more…</button>' : '');
       }
       // Content-aware headline sizing for the latest (featured) post
@@ -1191,7 +1299,7 @@ function startEdit(id) {
   if (!item) return;
   editingId = id;
   document.getElementById('intTitle').value   = item.title;
-  document.getElementById('intContent').value = item.content || '';
+  setEditorHTML(item.content || '');
   document.getElementById('authorRoleSelect').value = item.authorRole;
   document.querySelectorAll('.msg-type-pill').forEach(p => p.classList.remove('active'));
   document.querySelector('[data-type="' + item.msgType + '"].msg-type-pill').classList.add('active');
@@ -1217,9 +1325,11 @@ function updateTypeFields(type) {
 
 function resetForm() {
   editingId = null;
-  ['intTitle','intContent','awardName','awardCategory','awardRecipient','eventDate'].forEach(id => {
+  ['intTitle','awardName','awardCategory','awardRecipient','eventDate'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  document.getElementById('intContent').innerHTML = '';
+  document.getElementById('fmtBar').classList.remove('show');
   document.getElementById('mediaUpload').value = '';
   document.getElementById('mediaFileName').textContent = '';
   document.getElementById('formHeading').textContent = 'New Post';
@@ -1336,7 +1446,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('publishIntBtn').addEventListener('click', () => {
-    addPost(document.getElementById('intTitle').value, document.getElementById('intContent').value);
+    addPost(document.getElementById('intTitle').value, getEditorHTML());
   });
 
   document.getElementById('clearIntBtn').addEventListener('click', async () => {
@@ -1354,6 +1464,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+
+  initRichEditor();
 
   // ── BEACON FLIP CLOCK ANIMATION ──
   // True split-flap board: each tile ticks through random letters and lands on its target.
