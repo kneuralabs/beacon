@@ -220,9 +220,15 @@ body{
 .magic-modal input{width:100%;margin:.6rem 0;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:3px;background:var(--bg);color:var(--text);font-size:.9rem;font-family:var(--aptos)}
 .magic-modal input:focus{outline:none;border-color:var(--ink)}
 
-/* ── DOT BUTTON ── */
-#dotBtn{display:inline-block;width:10px;height:10px;border-radius:50%;border:none;cursor:pointer;margin-left:2px;background:var(--ink);transition:opacity .15s,background .25s;vertical-align:bottom;position:relative;bottom:4px;flex-shrink:0}
+/* ── DOT BUTTON (LIVE BEACON) ── */
+#dotBtn{display:inline-block;width:10px;height:10px;border-radius:50%;border:none;cursor:pointer;margin-left:2px;background:var(--ink);transition:opacity .15s,background .25s;vertical-align:bottom;position:relative;bottom:4px;flex-shrink:0;animation:beaconCore 2.4s ease-in-out infinite}
+#dotBtn::before,#dotBtn::after{content:"";position:absolute;top:50%;left:50%;width:100%;height:100%;border-radius:50%;border:1px solid var(--ink);transform:translate(-50%,-50%) scale(1);opacity:0;pointer-events:none;animation:beaconPing 2.4s cubic-bezier(.36,.11,.25,1) infinite}
+#dotBtn::after{animation-delay:1.2s}
 #dotBtn:hover{opacity:.5}
+#dotBtn:hover::before,#dotBtn:hover::after{animation-play-state:paused}
+@keyframes beaconCore{0%,100%{box-shadow:0 0 2px 0 var(--ink)}50%{box-shadow:0 0 8px 1.5px var(--ink)}}
+@keyframes beaconPing{0%{opacity:.55;transform:translate(-50%,-50%) scale(1)}70%{opacity:0;transform:translate(-50%,-50%) scale(4.2)}100%{opacity:0;transform:translate(-50%,-50%) scale(4.2)}}
+@media(prefers-reduced-motion:reduce){#dotBtn,#dotBtn::before,#dotBtn::after{animation:none}}
 
 /* ── FOOTER ── */
 footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);border-top:3px double var(--ink);padding-top:1rem;transition:color .25s,border-color .25s}
