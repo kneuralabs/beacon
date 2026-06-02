@@ -807,7 +807,25 @@ function ageBucket(sorted, i) {
 }
 
 // ── MEDIA HTML ────────────────────────────────────────────────────────────────
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
 async function getMediaHTML(item) {
+  // Preferred: media embedded in the synced feed (visible on every device)
+  if (item.mediaData) {
+    const isVideo = (item.mediaType || '').startsWith('video/');
+    const tag = isVideo
+      ? '<video src="' + item.mediaData + '" controls></video>'
+      : '<img src="' + item.mediaData + '" alt="media" loading="lazy">';
+    return '<div class="attached-media">' + tag + '</div>';
+  }
+  // Fallback: legacy items whose blob lives only in this device's IndexedDB
   if (!item.mediaRef) return '';
   try {
     const m = await getMediaBlob(item.mediaRef);
@@ -868,7 +886,7 @@ async function renderFeeds() {
         : '';
       html +=
         '<div class="grid-item' + (featured ? ' grid-item--featured' : '') +
-        (!item.title && !item.content && item.mediaRef ? ' grid-item--photo-only' : '') +
+        (!item.title && !item.content && (item.mediaData || item.mediaRef) ? ' grid-item--photo-only' : '') +
         '" data-age="' + age + '" data-rank="' + Math.min(i + 1, 4) + '">' +
           '<div class="feed-item">' +
             '<div class="item-title"><span class="item-title-text">' + esc(item.title) + '</span></div>' +
@@ -930,9 +948,16 @@ async function addPost(title, content) {
     const mediaId = 'media_' + id;
     await storeMediaBlob(mediaId, file, file.type);
     post.mediaRef = mediaId;
+    // Embed as data URL so the media syncs in feeds.json and shows on every device
+    post.mediaData = await readFileAsDataURL(file);
+    post.mediaType = file.type;
   } else if (editingId) {
     const ex = feeds.find(f => f.id === editingId);
-    if (ex && ex.mediaRef) post.mediaRef = ex.mediaRef;
+    if (ex) {
+      if (ex.mediaRef)  post.mediaRef  = ex.mediaRef;
+      if (ex.mediaData) post.mediaData = ex.mediaData;
+      if (ex.mediaType) post.mediaType = ex.mediaType;
+    }
   }
   if (editingId) {
     const idx = feeds.findIndex(f => f.id === editingId);
