@@ -35,7 +35,7 @@
 }
 
 *{margin:0;padding:0;box-sizing:border-box}
-html{transition:background .25s,color .25s}
+html{transition:background .25s,color .25s;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
 body{
   background:var(--bg);
@@ -61,7 +61,7 @@ body{
 /* ── MASTHEAD ── */
 .top-bar{text-align:left;padding:1.5rem 0 0;animation:mastheadReveal .7s cubic-bezier(.22,1,.36,1) both;position:relative}
 .top-bar::before{content:'';display:block;height:4px;background:var(--ink);margin-bottom:.5rem;transition:background .25s}
-.masthead-meta{display:flex;justify-content:space-between;align-items:center;font-family:var(--aptos);font-size:clamp(.65rem,2vw,.85rem);font-weight:500;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:.6rem 0;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);margin-bottom:.6rem;transition:color .25s,border-color .25s}
+.masthead-meta{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;font-family:var(--aptos);font-size:clamp(.65rem,2vw,.85rem);font-weight:500;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:.6rem 0;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);margin-bottom:.6rem;transition:color .25s,border-color .25s}
 .masthead-date-left,.masthead-edition{flex:1}
 .masthead-edition{text-align:right}
 .logo-name-wrap{display:inline-flex;align-items:center;line-height:1;gap:.04em}
@@ -281,6 +281,12 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
 @media(min-width:1800px){
   .wrap{padding:0 6rem 5rem}
   .grid-item--photo-only .attached-media img,.grid-item--photo-only .attached-media video{max-height:360px}
+}
+/* Ultra-wide desktops / 4K: use the extra width, keep columns readable */
+@media(min-width:2100px){
+  .wrap{max-width:2400px;margin:0 auto;padding:0 4rem 5rem}
+  .posts-grid{grid-template-columns:repeat(4,1fr)}
+  .grid-item--featured{grid-column:span 2}
 }
 </style>
 </head>
