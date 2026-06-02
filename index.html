@@ -610,6 +610,7 @@ function updateSyncBadge() {
 
 async function ghFetch(path, opts = {}) {
   const res = await fetch('https://api.github.com' + path, {
+    cache: 'no-store',   // always read a fresh sha — avoids 409 "does not match"
     ...opts,
     headers: {
       'Authorization': 'Bearer ' + ghToken,
@@ -621,7 +622,9 @@ async function ghFetch(path, opts = {}) {
   if (res.status === 404) return null;   // file doesn't exist yet
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || ('GitHub API ' + res.status));
+    const e = new Error(err.message || ('GitHub API ' + res.status));
+    e.status = res.status;
+    throw e;
   }
   return res.status === 204 ? null : res.json();
 }
@@ -680,30 +683,40 @@ async function repoSave() {
     } catch (_) {}
   }
 
-  // Get current sha first (required for updates)
-  let sha = null;
-  try {
-    const meta = await ghFetch(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${REPO_PATH}?ref=${REPO_BRANCH}`);
-    if (meta) sha = meta.sha;
-  } catch (_) {}
-
   const payload = feeds.map(({ _objectURL, ...r }) => r);
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
   // GitHub's Contents API rejects files larger than ~1MB. Fail clearly here.
   if (content.length > 1.4 * 1024 * 1024) {
     throw new Error('Feeds file too large for the repo (>1MB) — too many embedded images.');
   }
-  const body = {
-    message: 'beacon: update feeds ' + new Date().toISOString(),
-    content,
-    branch: REPO_BRANCH
-  };
-  if (sha) body.sha = sha;
 
-  await ghFetch(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${REPO_PATH}`, {
-    method: 'PUT',
-    body: JSON.stringify(body)
-  });
+  // Read the latest sha and PUT. On a 409 (sha moved underneath us, e.g. a
+  // concurrent auto-commit) refetch the sha and retry once.
+  const latestSha = async () => {
+    try {
+      const meta = await ghFetch(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${REPO_PATH}?ref=${REPO_BRANCH}`);
+      return meta ? meta.sha : null;
+    } catch (_) { return null; }
+  };
+  const put = async (sha) => {
+    const body = { message: 'beacon: update feeds ' + new Date().toISOString(), content, branch: REPO_BRANCH };
+    if (sha) body.sha = sha;
+    return ghFetch(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${REPO_PATH}`, {
+      method: 'PUT', body: JSON.stringify(body)
+    });
+  };
+
+  let sha = await latestSha();
+  try {
+    await put(sha);
+  } catch (e) {
+    if (e.status === 409 || /does not match/i.test(e.message)) {
+      sha = await latestSha();   // stale sha — refetch fresh and retry
+      await put(sha);
+    } else {
+      throw e;
+    }
+  }
 }
 
 // DELETE the file from the repo
