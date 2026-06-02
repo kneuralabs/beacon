@@ -129,6 +129,11 @@ body{
 /* Base: older/smaller items */
 .item-title-text{font-family:var(--aptos);font-weight:700;font-size:clamp(.82rem,1.8vw,.98rem);color:var(--ink);line-height:1.3;letter-spacing:-.015em;transition:color .25s}
 .item-content{font-size:clamp(.72rem,1.6vw,.82rem);color:var(--muted);line-height:1.65;white-space:pre-wrap;word-break:break-word;transition:color .25s}
+/* Older posts collapse to a 3-line summary until "Show more…" is tapped */
+.item-content--clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.item-content--clamp.item-content--open{display:block;-webkit-line-clamp:unset;overflow:visible}
+.show-more{margin-top:.5rem;align-self:flex-start;background:none;border:none;padding:.1rem 0;font-family:var(--aptos);font-size:.7rem;font-weight:600;letter-spacing:.02em;color:var(--ink);cursor:pointer;transition:color .2s}
+.show-more:hover{text-decoration:underline;opacity:.8}
 /* Secondary items (age=1, non-featured) */
 .grid-item[data-rank="2"] .item-title-text,.grid-item[data-rank="3"] .item-title-text{font-size:clamp(.88rem,2vw,1.02rem)}
 .grid-item[data-rank="2"] .item-content,.grid-item[data-rank="3"] .item-content{font-size:clamp(.76rem,1.7vw,.86rem)}
@@ -1041,6 +1046,14 @@ function awardPoster(item) {
     '</div>';
 }
 
+// Expand/collapse an older post's summary
+function toggleMore(btn) {
+  const content = btn.previousElementSibling;
+  if (!content) return;
+  const open = content.classList.toggle('item-content--open');
+  btn.textContent = open ? 'Show less' : 'Show more…';
+}
+
 // ── RENDER ────────────────────────────────────────────────────────────────────
 async function renderFeeds() {
   const sorted = [...feeds].sort((a, b) => b.timestamp - a.timestamp);
@@ -1066,9 +1079,15 @@ async function renderFeeds() {
             new Date(item.eventDate + 'T00:00:00').toLocaleDateString(undefined, { weekday:'short', month:'long', day:'numeric', year:'numeric' }) +
           '</div>'
         : '';
-      const bodyHtml = item.content
-        ? '<div class="item-content"' + (poster ? ' style="margin-top:.5rem"' : '') + '>' + esc(item.content) + '</div>'
-        : '';
+      // Latest post shows in full; older posts collapse to a summary + "Show more…"
+      let bodyHtml = '';
+      if (item.content) {
+        const collapse = !featured && item.content.length > 140;
+        bodyHtml =
+          '<div class="item-content' + (collapse ? ' item-content--clamp' : '') + '"' +
+            (poster ? ' style="margin-top:.5rem"' : '') + '>' + esc(item.content) + '</div>' +
+          (collapse ? '<button class="show-more" onclick="toggleMore(this)">Show more…</button>' : '');
+      }
       // Content-aware headline sizing for the latest (featured) post
       const tl = (item.title || '').length;
       const tlen = featured ? (tl <= 28 ? ' data-tlen="short"' : tl >= 60 ? ' data-tlen="long"' : ' data-tlen="mid"') : '';
