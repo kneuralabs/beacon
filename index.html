@@ -1206,23 +1206,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
 
   // ── BEACON FLIP CLOCK ANIMATION ──
+  // True split-flap board: each tile ticks through random letters and lands on its target.
   (function() {
-    const FLIP_MS    = 200;  // faster total flip
-    const HOLD_MS    = 180;
-    const BASE_FLIPS = 5;
-    const EXTRA      = 2;
-    const STAGGER    = 90;
-
+    const FLIP_MS = 150;   // duration of one full flip (fall + rise)
+    const HOLD_MS = 45;    // pause between consecutive flips
+    const STAGGER = 110;   // start offset between tiles (cascade)
+    const ALPHA   = 'abcdefghijklmnopqrstuvwxyz';
+    const rnd = () => ALPHA[(Math.random() * ALPHA.length) | 0];
     const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
 
     document.querySelectorAll('.bl').forEach((el, idx) => {
-      const char = el.textContent.trim();
+      const target = el.textContent.trim();
       el.innerHTML = '';
       el.style.opacity = '1';
 
       const probe = document.createElement('span');
-      probe.textContent = char;
-      probe.style.cssText = 'visibility:hidden;position:absolute;font-family:var(--blackletter);font-weight:600;font-size:inherit;line-height:1;white-space:nowrap;font-style:italic;';
+      probe.textContent = target;
+      probe.style.cssText = 'visibility:hidden;position:absolute;font-family:var(--blackletter);font-weight:600;font-size:inherit;line-height:1;white-space:nowrap;';
       el.appendChild(probe);
       const LH = probe.offsetHeight || 64;
       const LW = Math.max(probe.offsetWidth, LH * 0.62);
@@ -1233,144 +1233,113 @@ document.addEventListener('DOMContentLoaded', async () => {
       const CW  = Math.round(LW * 1.18);
       const R   = Math.max(4, Math.round(CH * 0.07));
 
-      el.style.cssText += `display:inline-block;position:relative;width:${CW}px;height:${CH}px;vertical-align:middle;perspective:600px;transform-style:preserve-3d;`;
+      el.style.cssText += `display:inline-block;position:relative;width:${CW}px;height:${CH}px;vertical-align:middle;perspective:${CH * 9}px;transform-style:preserve-3d;`;
 
-      function letterColor() { return isDark() ? '#1a1520' : '#ede8d8'; }
-      function bgColor()     { return isDark() ? '#e8e2d4' : '#26203d'; }
+      const letterColor = () => isDark() ? '#1a1520' : '#ede8d8';
+      const bgColor     = () => isDark() ? '#e8e2d4' : '#26203d';
 
-      function makeLetterTop(style) {
+      function makeLetter(isTop, ch) {
         const s = document.createElement('span');
-        s.textContent = char;
-        s.style.cssText = `display:block;position:absolute;top:${PAD}px;left:0;width:100%;text-align:center;font-family:var(--blackletter);font-weight:600;font-size:${LH}px;color:${letterColor()};line-height:1;font-style:${style};white-space:nowrap;transition:color .25s;`;
+        s.textContent = ch;
+        const top = isTop ? PAD : PAD - CH / 2;
+        s.style.cssText = `display:block;position:absolute;top:${top}px;left:0;width:100%;text-align:center;font-family:var(--blackletter);font-weight:600;font-size:${LH}px;color:${letterColor()};line-height:1;white-space:nowrap;transition:color .25s;`;
         return s;
       }
-      function makeLetterBot(style) {
-        const s = document.createElement('span');
-        s.textContent = char;
-        s.style.cssText = `display:block;position:absolute;top:${PAD - CH/2}px;left:0;width:100%;text-align:center;font-family:var(--blackletter);font-weight:600;font-size:${LH}px;color:${letterColor()};line-height:1;font-style:${style};white-space:nowrap;transition:color .25s;`;
-        return s;
-      }
-      function makeHalf(isTop, r) {
+      function makeHalf(isTop) {
         const d = document.createElement('span');
-        const rr = `${r}px`;
+        const rr = `${R}px`;
         const br = isTop
           ? `border-radius:${rr} ${rr} 0 0;border-bottom:2px solid rgba(0,0,0,.45);`
           : `border-radius:0 0 ${rr} ${rr};`;
-        d.style.cssText = `display:block;position:absolute;left:0;width:100%;height:50%;overflow:hidden;background:${bgColor()};${br}${isTop?'top:0;':'top:50%;'}transition:background .25s;`;
+        d.style.cssText = `display:block;position:absolute;left:0;width:100%;height:50%;overflow:hidden;background:${bgColor()};backface-visibility:hidden;${br}${isTop ? 'top:0;' : 'top:50%;'}transition:background .25s;`;
         return d;
       }
 
-      const botStatic = makeHalf(false, R);
-      const botStaticLet = makeLetterBot('italic');
-      botStatic.appendChild(botStaticLet);
-      el.appendChild(botStatic);
+      let curChar = rnd();
 
-      const topStatic = makeHalf(true, R);
-      const topStaticLet = makeLetterTop('italic');
-      topStatic.appendChild(topStaticLet);
-      el.appendChild(topStatic);
+      // Static halves (revealed/covered during the flip)
+      const botStatic = makeHalf(false), botStaticLet = makeLetter(false, curChar);
+      botStatic.appendChild(botStaticLet); el.appendChild(botStatic);
+      const topStatic = makeHalf(true),  topStaticLet = makeLetter(true, curChar);
+      topStatic.appendChild(topStaticLet); el.appendChild(topStatic);
 
-      // Falling flap (top half folds down)
-      const flapT = makeHalf(true, R);
-      flapT.style.transformOrigin = 'bottom center';
-      flapT.style.transform = 'rotateX(0deg)';
-      flapT.style.zIndex = '4';
-      flapT.style.transformStyle = 'preserve-3d';
-      const flapTLet = makeLetterTop('italic');
-      flapT.appendChild(flapTLet);
-      el.appendChild(flapT);
-
-      // Shadow overlay on falling flap — darkens as it falls
+      // Falling flap (front top half — shows the OLD char, folds down)
+      const flapT = makeHalf(true);
+      flapT.style.cssText += 'transform-origin:bottom center;transform:rotateX(0deg);z-index:4;transform-style:preserve-3d;';
+      const flapTLet = makeLetter(true, curChar); flapT.appendChild(flapTLet); el.appendChild(flapT);
       const flapTShade = document.createElement('span');
-      flapTShade.style.cssText = `display:block;position:absolute;inset:0;background:rgba(0,0,0,0);pointer-events:none;z-index:2;transition:background .05s;`;
+      flapTShade.style.cssText = 'display:block;position:absolute;inset:0;background:rgba(0,0,0,0);pointer-events:none;z-index:2;';
       flapT.appendChild(flapTShade);
 
-      // Rising flap (bottom half unfolds)
-      const flapB = makeHalf(false, R);
-      flapB.style.transformOrigin = 'top center';
-      flapB.style.transform = 'rotateX(90deg)';
-      flapB.style.zIndex = '4';
-      flapB.style.transformStyle = 'preserve-3d';
-      const flapBLet = makeLetterBot('italic');
-      flapB.appendChild(flapBLet);
-      el.appendChild(flapB);
+      // Rising flap (front bottom half — shows the NEW char, unfolds up)
+      const flapB = makeHalf(false);
+      flapB.style.cssText += 'transform-origin:top center;transform:rotateX(90deg);z-index:4;transform-style:preserve-3d;';
+      const flapBLet = makeLetter(false, curChar); flapB.appendChild(flapBLet); el.appendChild(flapB);
+      const flapBShade = document.createElement('span');
+      flapBShade.style.cssText = 'display:block;position:absolute;inset:0;background:rgba(0,0,0,.5);pointer-events:none;z-index:2;';
+      flapB.appendChild(flapBShade);
 
       // Hinge line
       const hinge = document.createElement('span');
       hinge.style.cssText = `display:block;position:absolute;left:-4%;width:108%;top:calc(50% - 1px);height:2px;background:rgba(0,0,0,.72);z-index:6;pointer-events:none;border-radius:2px;`;
       el.appendChild(hinge);
-
-      // Cast shadow below falling flap onto bottom half
-      const castShadow = document.createElement('span');
-      castShadow.style.cssText = `display:block;position:absolute;left:0;right:0;top:50%;height:40%;background:linear-gradient(to bottom,rgba(0,0,0,.32),transparent);z-index:3;pointer-events:none;opacity:0;`;
-      el.appendChild(castShadow);
-
       // Outer shell
       const outer = document.createElement('span');
       outer.style.cssText = `display:block;position:absolute;inset:0;border-radius:${R}px;box-shadow:0 10px 28px rgba(0,0,0,.6),0 3px 8px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.10);pointer-events:none;z-index:8;`;
       el.appendChild(outer);
-
       // Mid-hinge depth shadow
       const shade = document.createElement('span');
       shade.style.cssText = `display:block;position:absolute;left:0;right:0;top:50%;height:12%;background:linear-gradient(to bottom,rgba(0,0,0,.22),transparent);z-index:5;pointer-events:none;`;
       el.appendChild(shade);
 
       // Theme observer — update colors live when theme changes
-      const themeObs = new MutationObserver(() => {
+      new MutationObserver(() => {
         const tc = letterColor(), bc = bgColor();
         [topStaticLet, botStaticLet, flapTLet, flapBLet].forEach(s => s.style.color = tc);
         [topStatic, botStatic, flapT, flapB].forEach(h => h.style.background = bc);
-      });
-      themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-      let curStyle = 'italic';
-      const totalFlips = BASE_FLIPS + idx * EXTRA;
+      const totalFlips = 6 + idx * 2;   // later tiles keep ticking → cascade settle
+      const half = FLIP_MS / 2;
       let flip = 0;
-
-      function setStyle(els, s) { els.forEach(e => e.style.fontStyle = s); }
 
       function doFlip() {
         flip++;
         const isLast   = flip >= totalFlips;
-        const newStyle = isLast ? 'normal' : (curStyle === 'italic' ? 'normal' : 'italic');
+        const nextChar = isLast ? target : rnd();
 
-        setStyle([botStaticLet, flapBLet], newStyle);
+        // Pre-load the layers about to be exposed with the NEXT char.
+        topStaticLet.textContent = nextChar;   // revealed behind the falling flap
+        flapBLet.textContent     = nextChar;   // rises to cover the bottom half
 
-        // Phase 1: top flap falls — fast ease-in with slight overshoot feel
-        // Use filter:blur for motion blur at midpoint
-        const ph1 = FLIP_MS * 0.44;
-        flapT.style.transition = `transform ${ph1}ms cubic-bezier(.55,.0,.85,.1)`;
+        // Phase 1: top flap falls 0° → -90° (accelerating, like gravity)
+        flapT.style.transition = `transform ${half}ms cubic-bezier(.36,0,.66,-.06)`;
         flapT.style.transform  = 'rotateX(-90deg)';
-        // Ramp up shadow as flap falls
-        let shadowRamp = 0;
-        const rampInterval = setInterval(() => {
-          shadowRamp = Math.min(shadowRamp + 0.08, 0.38);
-          flapTShade.style.background = `rgba(0,0,0,${shadowRamp})`;
-          castShadow.style.opacity = String(shadowRamp * 2.4);
-        }, 12);
+        flapTShade.style.transition = `background ${half}ms ease-in`;
+        flapTShade.style.background  = 'rgba(0,0,0,.45)';
 
         setTimeout(() => {
-          clearInterval(rampInterval);
-          flapTShade.style.background = 'rgba(0,0,0,0)';
-          castShadow.style.opacity = '0';
-          setStyle([topStaticLet], newStyle);
-
-          // Phase 2: bottom flap snaps up — fast with elastic overshoot
-          const ph2 = FLIP_MS * 0.44;
-          flapB.style.transition = `transform ${ph2}ms cubic-bezier(.15,.6,.35,1.08)`;
+          // Phase 2: bottom flap rises 90° → 0° (settling with a slight overshoot)
+          flapB.style.transition = `transform ${half}ms cubic-bezier(.33,1.12,.68,1)`;
           flapB.style.transform  = 'rotateX(0deg)';
+          flapBShade.style.transition = `background ${half}ms ease-out`;
+          flapBShade.style.background  = 'rgba(0,0,0,0)';
 
           setTimeout(() => {
-            curStyle = newStyle;
-            setStyle([flapTLet], newStyle);
+            // Commit the new char everywhere, snap both flaps back to rest instantly.
+            curChar = nextChar;
+            botStaticLet.textContent = nextChar;
+            flapTLet.textContent     = nextChar;
             flapT.style.transition = 'none'; flapT.style.transform = 'rotateX(0deg)';
+            flapTShade.style.transition = 'none'; flapTShade.style.background = 'rgba(0,0,0,0)';
             flapB.style.transition = 'none'; flapB.style.transform = 'rotateX(90deg)';
+            flapBShade.style.transition = 'none'; flapBShade.style.background = 'rgba(0,0,0,.5)';
             if (!isLast) setTimeout(doFlip, HOLD_MS);
-          }, ph2 + 8);
-        }, ph1 + 6);
+          }, half + 10);
+        }, half + 10);
       }
 
-      setTimeout(doFlip, idx * STAGGER + 150);
+      setTimeout(doFlip, idx * STAGGER + 120);
     });
   })();
 });
