@@ -647,9 +647,14 @@ async function repoSave() {
   } catch (_) {}
 
   const payload = feeds.map(({ _objectURL, ...r }) => r);
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+  // GitHub's Contents API rejects files larger than ~1MB. Fail clearly here.
+  if (content.length > 1.4 * 1024 * 1024) {
+    throw new Error('Feeds file too large for the repo (>1MB) — a video or photo is too big to embed.');
+  }
   const body = {
     message: 'beacon: update feeds ' + new Date().toISOString(),
-    content: btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2)))),
+    content,
     branch: REPO_BRANCH
   };
   if (sha) body.sha = sha;
@@ -850,7 +855,7 @@ function toggleAutoCommit() { setAutoCommit(autoCommitTimer === null); }
 
 function save() {
   persistLocal();
-  if (ghToken) repoSave().catch(e => showToast('Sync error: ' + e.message));
+  if (ghToken) repoSave().catch(e => showError('Sync error: ' + e.message));
 }
 
 // Write feeds to localStorage WITHOUT the heavy embedded media (base64 data URLs
@@ -935,11 +940,15 @@ async function deleteMediaBlob(id) {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-function showToast(msg) {
+let toastTimer = null;
+function showToast(msg, ms = 3500) {
   const t = document.getElementById("toastMsg");
   t.textContent = msg; t.className = "toast show";
-  setTimeout(() => t.classList.remove("show"), 3500);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), ms);
 }
+// Errors stay up longer and are logged so they can be read/copied.
+function showError(msg) { console.error('[beacon]', msg); showToast(msg, 12000); }
 function esc(s) {
   return (s || '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 }
@@ -963,6 +972,29 @@ function readFileAsDataURL(file) {
     r.onload = () => resolve(r.result);
     r.onerror = reject;
     r.readAsDataURL(file);
+  });
+}
+
+// Downscale + re-encode an image so the embedded data URL stays small. This
+// keeps feeds.json under GitHub's 1MB Contents-API limit (a raw phone photo
+// is several MB and gets the commit rejected).
+function compressImage(file, maxDim = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      const scale = Math.min(1, maxDim / Math.max(width, height));
+      width = Math.round(width * scale); height = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      try { resolve(canvas.toDataURL('image/jpeg', quality)); }
+      catch (e) { reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+    img.src = url;
   });
 }
 
@@ -1098,9 +1130,15 @@ async function addPost(title, content) {
     const mediaId = 'media_' + id;
     await storeMediaBlob(mediaId, file, file.type);
     post.mediaRef = mediaId;
-    // Embed as data URL so the media syncs in feeds.json and shows on every device
-    post.mediaData = await readFileAsDataURL(file);
-    post.mediaType = file.type;
+    // Embed as data URL so the media syncs in feeds.json and shows on every device.
+    // Images are downscaled/compressed to keep feeds.json under the 1MB API limit.
+    if (file.type.startsWith('image/')) {
+      post.mediaData = await compressImage(file);
+      post.mediaType = 'image/jpeg';
+    } else {
+      post.mediaData = await readFileAsDataURL(file);
+      post.mediaType = file.type;
+    }
   } else if (editingId) {
     const ex = feeds.find(f => f.id === editingId);
     if (ex) {
@@ -1276,7 +1314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!ghToken) { openGistSettings(); showToast('Connect a token to commit'); return; }
     showToast('Committing…');
     try { await repoSave(); showToast('Committed to kneuralabs/beacon'); }
-    catch (e) { showToast('Commit failed: ' + e.message); }
+    catch (e) { showError('Commit failed: ' + e.message); }
   });
 
   // GitHub sync settings
