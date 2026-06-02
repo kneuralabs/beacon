@@ -1222,15 +1222,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ready = document.fonts
       ? document.fonts.load('600 1rem "Cormorant Garamond"').then(() => document.fonts.ready).catch(() => {})
       : Promise.resolve();
-    ready.then(build);
+    ready.then(() => build(true));
+    // Re-layout the logo when the viewport changes (e.g. device rotation) so the
+    // fixed-size tiles always fit in both portrait and landscape. No re-scramble.
+    let rzT;
+    addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => build(false), 250); });
 
-    function build() {
+    const revealDot = () => document.getElementById('dotBtn').classList.add('revealed');
+
+    function build(animate) {
     const tiles = document.querySelectorAll('.bl');
     const lastIdx = tiles.length - 1;
-    const revealDot = () => document.getElementById('dotBtn').classList.add('revealed');
-    setTimeout(revealDot, 9000); // safety net so the dot always appears
+    if (animate) setTimeout(revealDot, 9000); // safety net so the dot always appears
     tiles.forEach((el, idx) => {
-      const target = el.textContent.trim();
+      const target = el.dataset.letter || (el.dataset.letter = el.textContent.trim());
       el.innerHTML = '';
       el.style.opacity = '1';
 
@@ -1269,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return d;
       }
 
-      let curChar = rnd();
+      let curChar = animate ? rnd() : target;
 
       // Static halves (revealed/covered during the flip)
       const botStatic = makeHalf(false), botStaticLet = makeLetter(false, curChar);
@@ -1354,7 +1359,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, half + 10);
       }
 
-      setTimeout(doFlip, idx * STAGGER + 120);
+      if (animate) setTimeout(doFlip, idx * STAGGER + 120);
+      else if (idx === lastIdx) revealDot();
     });
     }
   })();
