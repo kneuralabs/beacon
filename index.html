@@ -132,9 +132,12 @@ body{
 /* Secondary items (age=1, non-featured) */
 .grid-item[data-rank="2"] .item-title-text,.grid-item[data-rank="3"] .item-title-text{font-size:clamp(.88rem,2vw,1.02rem)}
 .grid-item[data-rank="2"] .item-content,.grid-item[data-rank="3"] .item-content{font-size:clamp(.76rem,1.7vw,.86rem)}
-/* Featured/latest — largest */
+/* Featured/latest — largest, and content-aware: short headlines grow, long ones stay readable */
 .grid-item--featured .item-title-text{font-size:clamp(1.5rem,4vw,2.6rem);letter-spacing:-.03em;line-height:1.18}
-.grid-item--featured .item-content{font-size:clamp(1rem,2.5vw,1.15rem);color:var(--text);line-height:1.7}
+.grid-item--featured[data-tlen="short"] .item-title-text{font-size:clamp(1.9rem,6vw,3.4rem)}
+.grid-item--featured[data-tlen="long"]  .item-title-text{font-size:clamp(1.35rem,3.2vw,2.1rem);line-height:1.22}
+.grid-item--featured .item-content{font-size:clamp(1.05rem,2.6vw,1.25rem);color:var(--text);line-height:1.72}
+.grid-item--featured[data-tlen="short"] .item-content{font-size:clamp(1.1rem,2.8vw,1.35rem)}
 
 /* Aging */
 .grid-item[data-age="1"] .item-title-text{color:var(--age1-title)}
@@ -207,21 +210,17 @@ body{
 .icon-btn--primary svg{stroke:var(--bg)}
 .icon-btn--danger:hover{color:var(--danger);border-color:var(--danger)}
 
-/* GitHub sync button states */
-#gistSaveBtn{transition:background .2s,border-color .2s,color .2s,opacity .2s}
-.sync-btn--red{background:#b91c1c;border-color:#b91c1c;color:#fff}
-.sync-btn--red:hover{background:#a11717;border-color:#a11717;color:#fff}
-.sync-btn--red svg{stroke:#fff}
-.sync-btn--amber{background:#d97706;border-color:#d97706;color:#fff;cursor:wait}
-.sync-btn--amber svg{stroke:#fff}
-.sync-btn--locked{background:var(--surface2);border-color:var(--border2);color:var(--text)}
-.sync-btn--locked:hover{background:var(--surface2);border-color:var(--ink);color:var(--text)}
-.sync-btn--locked svg{stroke:var(--text)}
-.sync-btn--green{background:#15803d;border-color:#15803d;color:#fff}
-.sync-btn--green:hover{background:#13713a;border-color:#13713a;color:#fff;opacity:1}
-.sync-btn--green svg{stroke:#fff}
-#autoCommitBtn.on{background:#15803d;border-color:#15803d;color:#fff}
-#autoCommitBtn.on:hover{background:#13713a;border-color:#13713a;color:#fff}
+/* Single sync button states: red=offline · amber=connecting · green=connected+auto-committing */
+#syncBtn,#gistSaveBtn{transition:background .2s,border-color .2s,color .2s,opacity .2s}
+.sync-red{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.sync-red:hover{background:#a11717;border-color:#a11717;color:#fff}
+.sync-red svg{stroke:#fff}
+.sync-amber{background:#d97706;border-color:#d97706;color:#fff;cursor:wait}
+.sync-amber:hover{background:#d97706;border-color:#d97706;color:#fff}
+.sync-amber svg{stroke:#fff}
+.sync-green{background:#15803d;border-color:#15803d;color:#fff;cursor:default}
+.sync-green:hover{background:#15803d;border-color:#15803d;color:#fff;opacity:1}
+.sync-green svg{stroke:#fff}
 
 /* SVG icons inherit --icon color via CSS currentColor trick */
 .icon-btn svg,.adm-tab svg,.msg-type-pill svg,.file-label svg,.form-group label svg{
@@ -390,23 +389,11 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
         <label style="font-size:.6rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem">Personal Access Token</label>
         <input type="password" id="gistTokenInput" placeholder="ghp_…" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:3px;background:var(--bg);color:var(--text);font-size:.85rem;font-family:var(--aptos)">
       </div>
+      <div style="font-size:.66rem;color:var(--muted);margin-bottom:.9rem;line-height:1.5">Once connected, feeds auto-commit to the repo every minute.</div>
       <div id="gistStatus" style="font-size:.7rem;min-height:1rem;margin-bottom:.6rem"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.55rem .7rem;margin-bottom:.7rem;border:1px solid var(--border2);border-radius:4px">
-        <div style="display:flex;flex-direction:column;gap:.1rem;min-width:0">
-          <span style="font-size:.68rem;font-weight:700;color:var(--text)">Periodic auto-commit</span>
-          <span id="autoCommitInfo" style="font-size:.6rem;color:var(--muted)">Off</span>
-        </div>
-        <button id="autoCommitBtn" class="icon-btn" title="Auto-commit feeds to the repo every 5 minutes">Off</button>
-      </div>
-      <div style="display:flex;gap:.5rem;justify-content:space-between;align-items:center;flex-wrap:wrap">
-        <button id="gistDeleteBtn" class="icon-btn icon-btn--danger" title="Delete feeds.json from repo" style="font-size:.7rem">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h10M8 8v5M6 8v5M10 8v5M5 5l.5-2h5l.5 2"/></svg>
-          Clear repo data
-        </button>
-        <div style="display:flex;gap:.5rem">
-          <button id="gistCancelBtn" class="icon-btn">Cancel</button>
-          <button id="gistSaveBtn" class="icon-btn icon-btn--primary">Connect</button>
-        </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button id="gistCancelBtn" class="icon-btn">Cancel</button>
+        <button id="gistSaveBtn" class="icon-btn icon-btn--primary">Connect</button>
       </div>
     </div>
   </div>
@@ -424,12 +411,7 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
         <div class="card-header">
           <h2>All Posts</h2>
           <div style="display:flex;gap:.4rem;align-items:center">
-            <button id="commitNowBtn" class="icon-btn" title="Commit feeds to the repo now">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3M5 6l3-3 3 3M3.5 13h9"/></svg>
-            </button>
-            <button id="gistSettingsBtn" class="icon-btn" title="GitHub Gist sync settings">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M10.5 6A2.5 2.5 0 0 0 8 4a2.5 2.5 0 0 0-1 4.8V10"/><circle cx="8" cy="12" r=".6" fill="currentColor" stroke="none"/></svg>
-            </button>
+            <button id="syncBtn" class="icon-btn sync-red" title="Connect to repo"></button>
             <button id="clearIntBtn" class="icon-btn icon-btn--danger" title="Delete all posts">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h10M8 8v5M6 8v5M10 8v5M5 5l.5-2h5l.5 2"/></svg>
           </button>
@@ -581,8 +563,7 @@ const REPO_OWNER  = "kneuralabs";
 const REPO_NAME   = "beacon";
 const REPO_PATH   = "data/feeds.json";
 const REPO_BRANCH = "main";
-const AUTOCOMMIT_KEY = "beacon_autocommit";
-const AUTOCOMMIT_MS  = 5 * 60 * 1000;   // every 5 minutes
+const AUTOCOMMIT_MS  = 60 * 1000;   // auto-commit every 1 minute once connected
 
 let feeds = [], isAdmin = false, editingId = null;
 let ghToken = null;
@@ -744,166 +725,105 @@ async function verifyToken(token) {
   return u.login;
 }
 
-// ── SYNC SETTINGS UI ─────────────────────────────────────────────────────────
-
-// ── SYNC BUTTON STATE MACHINE ──
-// red = not connected · amber = connecting · locked = connected/established · green = armed to commit
-let syncBtnState = 'red';
-const SYNC_ICONS = {
-  red:    '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l10 10M11 5.5V3.5a1 1 0 0 0-1-1H8M5 10.5v2a1 1 0 0 0 1 1h2"/></svg>',
-  amber:  '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1s" repeatCount="indefinite"/></path></svg>',
-  locked: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>',
-  green:  '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3M5 6l3-3 3 3M3.5 13h9"/></svg>'
+// ── SINGLE SYNC BUTTON ─────────────────────────────────────────────────────────
+// One ultra-minimal admin button. red = not connected (click → token routine) ·
+// amber = connecting · green = connected & locked to auto-commit every 1 minute.
+let syncState = 'red';
+const SYNC_IC = {
+  red:   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l10 10M11 5.5V3.5a1 1 0 0 0-1-1H8M5 10.5v2a1 1 0 0 0 1 1h2"/></svg>',
+  amber: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1s" repeatCount="indefinite"/></path></svg>',
+  green: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8.5 6.5,12 13,4.5"/></svg>'
 };
-const SYNC_LABELS = { red:'Connect', amber:'Connecting…', locked:'Connected', green:'Commit to repo' };
+const SYNC_TITLE = { red:'Connect to repo', amber:'Connecting…', green:'Connected · auto-committing every minute' };
 
-function setSyncBtnState(state) {
-  syncBtnState = state;
-  const btn = document.getElementById('gistSaveBtn');
+function setSync(state) {
+  syncState = state;
+  const btn = document.getElementById('syncBtn');
   if (!btn) return;
-  btn.classList.remove('icon-btn--primary','sync-btn--red','sync-btn--amber','sync-btn--locked','sync-btn--green');
-  btn.classList.add('sync-btn--' + state);
+  btn.classList.remove('sync-red','sync-amber','sync-green');
+  btn.classList.add('sync-' + state);
   btn.disabled = (state === 'amber');
-  btn.innerHTML = SYNC_ICONS[state] + '<span>' + SYNC_LABELS[state] + '</span>';
+  btn.innerHTML = SYNC_IC[state];
+  btn.title = SYNC_TITLE[state] +
+    (state === 'green' && autoCommitLast ? ' · last ' + autoCommitLast : '');
 }
 
-function openGistSettings() {
+// First-time routine: prompt for the token
+function openTokenPrompt() {
   document.getElementById('gistOverlay').classList.add('open');
-  document.getElementById('gistTokenInput').value = ghToken || '';
+  document.getElementById('gistTokenInput').value = '';
   document.getElementById('gistStatus').textContent = '';
-  setSyncBtnState(ghToken ? 'locked' : 'red');
-  updateAutoCommitUI();
   setTimeout(() => document.getElementById('gistTokenInput').focus(), 80);
 }
-function closeGistSettings() {
-  document.getElementById('gistOverlay').classList.remove('open');
+function closeTokenPrompt() { document.getElementById('gistOverlay').classList.remove('open'); }
+
+// The one button. red → open token routine · green → locked (status only).
+function onSyncBtnClick() {
+  if (syncState === 'green') {
+    showToast('Connected · auto-commit every 1 min' + (autoCommitLast ? ' · last ' + autoCommitLast : ''));
+    return;
+  }
+  if (syncState === 'amber') return;
+  openTokenPrompt();
 }
 
-// Dispatcher: behaviour depends on the current button state
-async function onSyncBtnClick() {
-  if (syncBtnState === 'locked') { setSyncBtnState('green'); return; }  // arm
-  if (syncBtnState === 'green')  { await commitToRepo(); return; }       // commit
-  await connectGist();                                                   // red → connect
+// Verify a token, load feeds, then lock into auto-commit. Surfaces errors in red.
+async function connectWithToken(tokenVal, statusEl) {
+  setSync('amber');
+  if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Verifying…'; }
+  try {
+    const login = await verifyToken(tokenVal);
+    ghToken = tokenVal;                    // set before repoLoad
+    const result = await repoLoad();
+    if (result !== null) { feeds = result.feeds; persistLocal(); await renderFeeds(); }
+    setToken(tokenVal);
+    setSync('green');
+    startAutoCommit();
+    closeTokenPrompt();
+    showToast('Connected as @' + login + ' · auto-committing every minute');
+    return true;
+  } catch (e) {
+    setToken(null);
+    stopAutoCommit();
+    setSync('red');
+    if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = e.message; }
+    showToast('Connection failed: ' + e.message);
+    return false;
+  }
 }
 
+// Connect from the overlay's input
 async function connectGist() {
   const tokenVal = document.getElementById('gistTokenInput').value.trim();
   const statusEl = document.getElementById('gistStatus');
-
   if (!tokenVal) {
-    setToken(null);
-    stopAutoCommit();
-    setSyncBtnState('red');
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = 'Enter a token to connect';
     return;
   }
-  setSyncBtnState('amber');
-  statusEl.style.color = 'var(--muted)';
-  statusEl.textContent = 'Verifying…';
-  try {
-    const login = await verifyToken(tokenVal);
-    ghToken = tokenVal;   // set before repoLoad
-    const result = await repoLoad();
-    if (result !== null) {
-      feeds = result.feeds;
-      persistLocal();
-      await renderFeeds();
-      showToast('Connected as @' + login + ' · ' + feeds.length + ' post(s) loaded');
-    } else {
-      showToast('Connected as @' + login + ' · No existing data, ready to publish');
-    }
-    setToken(tokenVal);
-    statusEl.style.color = 'var(--age1-title)';
-    statusEl.textContent = 'Connected — click again to commit data to repo';
-    setSyncBtnState('locked');
-    if (localStorage.getItem(AUTOCOMMIT_KEY) === '1') startAutoCommit();
-    updateAutoCommitUI();
-  } catch (e) {
-    setToken(null);
-    stopAutoCommit();
-    setSyncBtnState('red');
-    statusEl.style.color = 'var(--danger)';
-    statusEl.textContent = e.message;
-  }
+  await connectWithToken(tokenVal, statusEl);
 }
 
-async function commitToRepo() {
-  const statusEl = document.getElementById('gistStatus');
-  setSyncBtnState('amber');
-  statusEl.style.color = 'var(--muted)';
-  statusEl.textContent = 'Committing…';
-  try {
-    await repoSave();
-    showToast('Committed to kneuralabs/beacon');
-    statusEl.style.color = 'var(--age1-title)';
-    statusEl.textContent = 'Committed · ' + feeds.length + ' post(s) on repo';
-    setSyncBtnState('locked');
-  } catch (e) {
-    statusEl.style.color = 'var(--danger)';
-    statusEl.textContent = e.message;
-    setSyncBtnState('locked');
-  }
-}
-
-async function clearGistData() {
-  if (!confirm('Delete data/feeds.json from kneuralabs/beacon? Local data stays.')) return;
-  try {
-    await repoDelete();
-    showToast('Remote data deleted');
-    closeGistSettings();
-  } catch (e) {
-    showToast('Error: ' + e.message);
-  }
-}
-
-// ── PERIODIC AUTO-COMMIT ───────────────────────────────────────────────────────
-
-function updateAutoCommitUI() {
-  const on  = autoCommitTimer !== null;
-  const btn = document.getElementById('autoCommitBtn');
-  const info = document.getElementById('autoCommitInfo');
-  if (btn)  { btn.textContent = on ? 'On' : 'Off'; btn.classList.toggle('on', on); }
-  if (info) info.textContent = !ghToken
-    ? 'Connect a token first'
-    : on
-      ? 'Every 5 min' + (autoCommitLast ? ' · last ' + autoCommitLast : '')
-      : 'Off';
-}
-
+// ── PERIODIC AUTO-COMMIT (every 1 minute once connected) ───────────────────────
 async function runAutoCommit() {
   if (!ghToken) return;
   try {
     await repoSave();
     autoCommitLast = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } catch (e) { /* keep silent; next tick retries */ }
-  updateAutoCommitUI();
+    setSync('green');   // refresh title with last-commit time
+  } catch (e) {
+    setSync('red');   // surface the failure on the button
+  }
 }
 
 function startAutoCommit() {
   if (autoCommitTimer !== null) return;
   autoCommitTimer = setInterval(runAutoCommit, AUTOCOMMIT_MS);
-  updateAutoCommitUI();
 }
 
 function stopAutoCommit() {
   if (autoCommitTimer !== null) { clearInterval(autoCommitTimer); autoCommitTimer = null; }
-  updateAutoCommitUI();
 }
-
-function setAutoCommit(on) {
-  if (on && !ghToken) {
-    showToast('Connect a token before enabling auto-commit');
-    localStorage.setItem(AUTOCOMMIT_KEY, '0');
-    updateAutoCommitUI();
-    return;
-  }
-  localStorage.setItem(AUTOCOMMIT_KEY, on ? '1' : '0');
-  if (on) { startAutoCommit(); runAutoCommit(); showToast('Auto-commit on · every 5 min'); }
-  else    { stopAutoCommit(); showToast('Auto-commit off'); }
-}
-
-function toggleAutoCommit() { setAutoCommit(autoCommitTimer === null); }
 
 // ── STORAGE HELPERS ───────────────────────────────────────────────────────────
 
@@ -1149,10 +1069,13 @@ async function renderFeeds() {
       const bodyHtml = item.content
         ? '<div class="item-content"' + (poster ? ' style="margin-top:.5rem"' : '') + '>' + esc(item.content) + '</div>'
         : '';
+      // Content-aware headline sizing for the latest (featured) post
+      const tl = (item.title || '').length;
+      const tlen = featured ? (tl <= 28 ? ' data-tlen="short"' : tl >= 60 ? ' data-tlen="long"' : ' data-tlen="mid"') : '';
       html +=
         '<div class="grid-item' + (featured ? ' grid-item--featured' : '') +
         (!item.title && !item.content && (item.mediaData || item.mediaRef) ? ' grid-item--photo-only' : '') +
-        '" data-age="' + age + '" data-rank="' + Math.min(i + 1, 4) + '">' +
+        '" data-age="' + age + '" data-rank="' + Math.min(i + 1, 4) + '"' + tlen + '>' +
           '<div class="feed-item">' +
             '<div class="item-title"><span class="item-title-text">' + esc(item.title) + '</span></div>' +
             '<div class="item-meta">' +
@@ -1313,12 +1236,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Restore token, then load
   ghToken = getToken();
   updateSyncBadge();
-  // Resume periodic auto-commit if it was enabled and we have a token
-  if (ghToken && localStorage.getItem(AUTOCOMMIT_KEY) === '1') startAutoCommit();
 
   await openDB();
   await loadWithRemote();
   await renderFeeds();
+
+  // If a token was saved, re-verify it (amber → green) and resume auto-commit;
+  // a failed re-verify turns the button red so the first-time routine reopens.
+  if (ghToken) {
+    setSync('amber');
+    verifyToken(ghToken)
+      .then(() => { setSync('green'); startAutoCommit(); })
+      .catch(() => { setToken(null); setSync('red'); });
+  } else {
+    setSync('red');
+  }
 
   // Admin dot
   document.getElementById('dotBtn').addEventListener('click', () => {
@@ -1394,30 +1326,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     feeds = []; save(); await renderFeeds(); showToast("All deleted");
   });
 
-  // Manual commit from the admin header
-  document.getElementById('commitNowBtn').addEventListener('click', async () => {
-    if (!ghToken) { openGistSettings(); showToast('Connect a token to commit'); return; }
-    showToast('Committing…');
-    try { await repoSave(); showToast('Committed to kneuralabs/beacon'); }
-    catch (e) { showError('Commit failed: ' + e.message); }
-  });
-
-  // GitHub sync settings
-  document.getElementById('gistSettingsBtn').addEventListener('click', openGistSettings);
-  document.getElementById('gistCancelBtn').addEventListener('click', closeGistSettings);
-  document.getElementById('gistSaveBtn').addEventListener('click', onSyncBtnClick);
-  document.getElementById('gistDeleteBtn').addEventListener('click', clearGistData);
-  document.getElementById('autoCommitBtn').addEventListener('click', toggleAutoCommit);
+  // Single sync button + first-time token routine
+  document.getElementById('syncBtn').addEventListener('click', onSyncBtnClick);
+  document.getElementById('gistCancelBtn').addEventListener('click', closeTokenPrompt);
+  document.getElementById('gistSaveBtn').addEventListener('click', connectGist);
   document.getElementById('gistTokenInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('gistSaveBtn').click();
-  });
-  // Editing the token unlocks the button so a new connection can be established
-  document.getElementById('gistTokenInput').addEventListener('input', e => {
-    if (syncBtnState !== 'amber' && e.target.value.trim() !== (ghToken || '')) {
-      setSyncBtnState('red');
-    } else if (syncBtnState === 'red' && e.target.value.trim() === (ghToken || '') && ghToken) {
-      setSyncBtnState('locked');
-    }
   });
 
   document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
