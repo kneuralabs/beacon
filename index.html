@@ -602,29 +602,30 @@ async function ghFetch(path, opts = {}) {
 }
 
 // GET current file — works unauthenticated (public repo) for reads
-// Returns { feeds: [...], sha } or null
+// Returns { feeds: [...] } or null
 async function repoLoad() {
-  // Authenticated path: use Contents API (returns sha needed for writes)
+  // Authenticated path: Contents API with the raw media type. This returns the
+  // file verbatim (fresh, no 1MB base64 limit), so a just-committed post — image
+  // and all — comes back exactly as saved when the page is reopened.
   if (ghToken) {
     try {
-      const data = await ghFetch(
-        `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${REPO_PATH}?ref=${REPO_BRANCH}`
+      const res = await fetch(
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${REPO_PATH}?ref=${REPO_BRANCH}&t=${Date.now()}`,
+        { headers: { 'Authorization': 'Bearer ' + ghToken, 'Accept': 'application/vnd.github.raw' }, cache: 'no-store' }
       );
-      if (!data) return null; // 404 — file not yet created
-      const json = JSON.parse(atob(data.content.replace(/\n/g, '')));
-      return { feeds: json, sha: data.sha };
+      if (res.status === 404) return null; // file not created yet
+      if (res.ok) return { feeds: await res.json() };
+      // any other status → fall through to the raw CDN
     } catch (e) {
       console.warn('repo load (auth) failed:', e.message);
-      return null;
     }
   }
-  // Unauthenticated path: raw CDN — open CORS, no rate-limit, no auth needed
+  // Unauthenticated / fallback: raw CDN — open CORS, no auth, handles any size
   try {
     const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_BRANCH}/${REPO_PATH}`;
-    const res = await fetch(rawUrl + '?t=' + Date.now());
-    if (res.status === 404) return null; // not published yet — silent, expected
-    if (!res.ok) return null;
-    return { feeds: await res.json(), sha: null };
+    const res = await fetch(rawUrl + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return null; // 404 = not published yet, or network issue
+    return { feeds: await res.json() };
   } catch (_) {
     return null; // offline or network error — fail silently, localStorage takes over
   }
