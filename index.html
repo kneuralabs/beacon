@@ -235,7 +235,9 @@ body{
 .magic-modal input:focus{outline:none;border-color:var(--ink)}
 
 /* ── DOT BUTTON (LIVE BEACON) ── */
-#dotBtn{display:inline-block;width:10px;height:10px;border-radius:50%;border:none;cursor:pointer;margin-left:2px;background:var(--ink);transition:opacity .15s,background .25s;vertical-align:bottom;position:relative;bottom:4px;flex-shrink:0;animation:beaconCore 2.4s ease-in-out infinite}
+#dotBtn{display:inline-block;width:10px;height:10px;border-radius:50%;border:none;cursor:pointer;margin-left:2px;background:var(--ink);transition:opacity .15s,background .25s;vertical-align:bottom;position:relative;bottom:4px;flex-shrink:0;animation:beaconCore 2.4s ease-in-out infinite;opacity:0}
+/* Dot stays hidden until the flip animation finishes, then fades in */
+#dotBtn.revealed{opacity:1;transition:opacity .9s ease,background .25s}
 #dotBtn::before,#dotBtn::after{content:"";position:absolute;top:50%;left:50%;width:100%;height:100%;border-radius:50%;border:1px solid var(--ink);transform:translate(-50%,-50%) scale(1);opacity:0;pointer-events:none;animation:beaconPing 2.4s cubic-bezier(.36,.11,.25,1) infinite}
 #dotBtn::after{animation-delay:1.2s}
 #dotBtn:hover{opacity:.5}
@@ -1223,7 +1225,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     ready.then(build);
 
     function build() {
-    document.querySelectorAll('.bl').forEach((el, idx) => {
+    const tiles = document.querySelectorAll('.bl');
+    const lastIdx = tiles.length - 1;
+    const revealDot = () => document.getElementById('dotBtn').classList.add('revealed');
+    setTimeout(revealDot, 9000); // safety net so the dot always appears
+    tiles.forEach((el, idx) => {
       const target = el.textContent.trim();
       el.innerHTML = '';
       el.style.opacity = '1';
@@ -1343,6 +1349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             flapB.style.transition = 'none'; flapB.style.transform = 'rotateX(90deg)';
             flapBShade.style.transition = 'none'; flapBShade.style.background = 'rgba(0,0,0,.5)';
             if (!isLast) setTimeout(doFlip, HOLD_MS);
+            else if (idx === lastIdx) revealDot();
           }, half + 10);
         }, half + 10);
       }
