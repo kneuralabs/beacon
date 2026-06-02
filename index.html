@@ -405,6 +405,9 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
         <div class="card-header">
           <h2>All Posts</h2>
           <div style="display:flex;gap:.4rem;align-items:center">
+            <button id="commitNowBtn" class="icon-btn" title="Commit feeds to the repo now">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3M5 6l3-3 3 3M3.5 13h9"/></svg>
+            </button>
             <button id="gistSettingsBtn" class="icon-btn" title="GitHub Gist sync settings">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M10.5 6A2.5 2.5 0 0 0 8 4a2.5 2.5 0 0 0-1 4.8V10"/><circle cx="8" cy="12" r=".6" fill="currentColor" stroke="none"/></svg>
             </button>
@@ -745,7 +748,7 @@ async function connectGist() {
     const result = await repoLoad();
     if (result !== null) {
       feeds = result.feeds;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(feeds));
+      persistLocal();
       await renderFeeds();
       showToast('Connected as @' + login + ' · ' + feeds.length + ' post(s) loaded');
     } else {
@@ -846,8 +849,21 @@ function toggleAutoCommit() { setAutoCommit(autoCommitTimer === null); }
 // ── STORAGE HELPERS ───────────────────────────────────────────────────────────
 
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(feeds.map(({ _objectURL, ...r }) => r)));
+  persistLocal();
   if (ghToken) repoSave().catch(e => showToast('Sync error: ' + e.message));
+}
+
+// Write feeds to localStorage WITHOUT the heavy embedded media (base64 data URLs
+// blow past the ~5MB quota). Local views fall back to the IndexedDB blob via
+// mediaRef; the full media still travels to the repo in repoSave().
+function persistLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(feeds.map(({ _objectURL, mediaData, ...r }) => r)));
+    return true;
+  } catch (e) {
+    showToast('Local cache full — changes saved to repo');
+    return false;
+  }
 }
 
 function load() {
@@ -860,7 +876,7 @@ async function loadWithRemote() {
     const result = await repoLoad();
     if (result !== null) {
       feeds = result.feeds;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(feeds));
+      persistLocal();
     }
     // result === null means file doesn't exist yet or network unavailable — both fine
   } catch (_) {
@@ -1253,6 +1269,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!confirm("Delete ALL posts?")) return;
     for (const item of feeds) if (item.mediaRef) await deleteMediaBlob(item.mediaRef);
     feeds = []; save(); await renderFeeds(); showToast("All deleted");
+  });
+
+  // Manual commit from the admin header
+  document.getElementById('commitNowBtn').addEventListener('click', async () => {
+    if (!ghToken) { openGistSettings(); showToast('Connect a token to commit'); return; }
+    showToast('Committing…');
+    try { await repoSave(); showToast('Committed to kneuralabs/beacon'); }
+    catch (e) { showToast('Commit failed: ' + e.message); }
   });
 
   // GitHub sync settings
