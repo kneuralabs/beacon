@@ -35,7 +35,7 @@
 }
 
 *{margin:0;padding:0;box-sizing:border-box}
-html{transition:background .25s,color .25s}
+html{transition:background .25s,color .25s;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
 body{
   background:var(--bg);
@@ -61,7 +61,7 @@ body{
 /* ── MASTHEAD ── */
 .top-bar{text-align:left;padding:1.5rem 0 0;animation:mastheadReveal .7s cubic-bezier(.22,1,.36,1) both;position:relative}
 .top-bar::before{content:'';display:block;height:4px;background:var(--ink);margin-bottom:.5rem;transition:background .25s}
-.masthead-meta{display:flex;justify-content:space-between;align-items:center;font-family:var(--aptos);font-size:clamp(.65rem,2vw,.85rem);font-weight:500;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:.6rem 0;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);margin-bottom:.6rem;transition:color .25s,border-color .25s}
+.masthead-meta{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;font-family:var(--aptos);font-size:clamp(.65rem,2vw,.85rem);font-weight:500;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:.6rem 0;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);margin-bottom:.6rem;transition:color .25s,border-color .25s}
 .masthead-date-left,.masthead-edition{flex:1}
 .masthead-edition{text-align:right}
 .logo-name-wrap{display:inline-flex;align-items:center;line-height:1;gap:.04em}
@@ -220,9 +220,15 @@ body{
 .magic-modal input{width:100%;margin:.6rem 0;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:3px;background:var(--bg);color:var(--text);font-size:.9rem;font-family:var(--aptos)}
 .magic-modal input:focus{outline:none;border-color:var(--ink)}
 
-/* ── DOT BUTTON ── */
-#dotBtn{display:inline-block;width:10px;height:10px;border-radius:50%;border:none;cursor:pointer;margin-left:2px;background:var(--ink);transition:opacity .15s,background .25s;vertical-align:bottom;position:relative;bottom:4px;flex-shrink:0}
+/* ── DOT BUTTON (LIVE BEACON) ── */
+#dotBtn{display:inline-block;width:10px;height:10px;border-radius:50%;border:none;cursor:pointer;margin-left:2px;background:var(--ink);transition:opacity .15s,background .25s;vertical-align:bottom;position:relative;bottom:4px;flex-shrink:0;animation:beaconCore 2.4s ease-in-out infinite}
+#dotBtn::before,#dotBtn::after{content:"";position:absolute;top:50%;left:50%;width:100%;height:100%;border-radius:50%;border:1px solid var(--ink);transform:translate(-50%,-50%) scale(1);opacity:0;pointer-events:none;animation:beaconPing 2.4s cubic-bezier(.36,.11,.25,1) infinite}
+#dotBtn::after{animation-delay:1.2s}
 #dotBtn:hover{opacity:.5}
+#dotBtn:hover::before,#dotBtn:hover::after{animation-play-state:paused}
+@keyframes beaconCore{0%,100%{box-shadow:0 0 2px 0 var(--ink)}50%{box-shadow:0 0 8px 1.5px var(--ink)}}
+@keyframes beaconPing{0%{opacity:.55;transform:translate(-50%,-50%) scale(1)}70%{opacity:0;transform:translate(-50%,-50%) scale(4.2)}100%{opacity:0;transform:translate(-50%,-50%) scale(4.2)}}
+@media(prefers-reduced-motion:reduce){#dotBtn,#dotBtn::before,#dotBtn::after{animation:none}}
 
 /* ── FOOTER ── */
 footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);border-top:3px double var(--ink);padding-top:1rem;transition:color .25s,border-color .25s}
@@ -275,6 +281,12 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
 @media(min-width:1800px){
   .wrap{padding:0 6rem 5rem}
   .grid-item--photo-only .attached-media img,.grid-item--photo-only .attached-media video{max-height:360px}
+}
+/* Ultra-wide desktops / 4K: use the extra width, keep columns readable */
+@media(min-width:2100px){
+  .wrap{max-width:2400px;margin:0 auto;padding:0 4rem 5rem}
+  .posts-grid{grid-template-columns:repeat(4,1fr)}
+  .grid-item--featured{grid-column:span 2}
 }
 </style>
 </head>
