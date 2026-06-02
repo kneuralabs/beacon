@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "id": "feed_1780396274110",
+    "title": "Welcome to Beacon",
+    "content": "Artificial intelligence is moving from novelty to necessity. New models, tools, and breakthroughs appear almost daily, reshaping industries faster than many can keep pace. Yet amid the constant stream of announcements, one question matters most: what will have a lasting impact?\n\nBeacon was created to answer that question.\n\nPublished by Kneuralabs, Beacon is a curated newsletter exploring the ideas, technologies, and shifts defining the future of AI. Each edition cuts through the noise to deliver clear analysis, practical insights, and the developments that deserve your attention.\n\nThe future is being written in real time. Consider this your front-row seat.",
+    "msgType": "Announcement",
+    "authorRole": "CEO",
+    "timestamp": 1780396274110,
+    "mediaRef": "media_feed_1780396274110",
+    "mediaType": "image/png"
+  }
+]
