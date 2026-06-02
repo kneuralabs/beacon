@@ -196,6 +196,8 @@ body{
 .sync-btn--green{background:#15803d;border-color:#15803d;color:#fff}
 .sync-btn--green:hover{background:#13713a;border-color:#13713a;color:#fff;opacity:1}
 .sync-btn--green svg{stroke:#fff}
+#autoCommitBtn.on{background:#15803d;border-color:#15803d;color:#fff}
+#autoCommitBtn.on:hover{background:#13713a;border-color:#13713a;color:#fff}
 
 /* SVG icons inherit --icon color via CSS currentColor trick */
 .icon-btn svg,.adm-tab svg,.msg-type-pill svg,.file-label svg,.form-group label svg{
@@ -370,6 +372,13 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
         <input type="password" id="gistTokenInput" placeholder="ghp_…" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:3px;background:var(--bg);color:var(--text);font-size:.85rem;font-family:var(--aptos)">
       </div>
       <div id="gistStatus" style="font-size:.7rem;min-height:1rem;margin-bottom:.6rem"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.55rem .7rem;margin-bottom:.7rem;border:1px solid var(--border2);border-radius:4px">
+        <div style="display:flex;flex-direction:column;gap:.1rem;min-width:0">
+          <span style="font-size:.68rem;font-weight:700;color:var(--text)">Periodic auto-commit</span>
+          <span id="autoCommitInfo" style="font-size:.6rem;color:var(--muted)">Off</span>
+        </div>
+        <button id="autoCommitBtn" class="icon-btn" title="Auto-commit feeds to the repo every 5 minutes">Off</button>
+      </div>
       <div style="display:flex;gap:.5rem;justify-content:space-between;align-items:center;flex-wrap:wrap">
         <button id="gistDeleteBtn" class="icon-btn icon-btn--danger" title="Delete feeds.json from repo" style="font-size:.7rem">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h10M8 8v5M6 8v5M10 8v5M5 5l.5-2h5l.5 2"/></svg>
@@ -550,9 +559,12 @@ const REPO_OWNER  = "kneuralabs";
 const REPO_NAME   = "beacon";
 const REPO_PATH   = "data/feeds.json";
 const REPO_BRANCH = "main";
+const AUTOCOMMIT_KEY = "beacon_autocommit";
+const AUTOCOMMIT_MS  = 5 * 60 * 1000;   // every 5 minutes
 
 let feeds = [], isAdmin = false, editingId = null;
 let ghToken = null;
+let autoCommitTimer = null, autoCommitLast = null;
 
 // ── GITHUB CONTENTS API ───────────────────────────────────────────────────────
 
@@ -698,6 +710,7 @@ function openGistSettings() {
   document.getElementById('gistTokenInput').value = ghToken || '';
   document.getElementById('gistStatus').textContent = '';
   setSyncBtnState(ghToken ? 'locked' : 'red');
+  updateAutoCommitUI();
   setTimeout(() => document.getElementById('gistTokenInput').focus(), 80);
 }
 function closeGistSettings() {
@@ -717,6 +730,7 @@ async function connectGist() {
 
   if (!tokenVal) {
     setToken(null);
+    stopAutoCommit();
     setSyncBtnState('red');
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = 'Enter a token to connect';
@@ -741,8 +755,11 @@ async function connectGist() {
     statusEl.style.color = 'var(--age1-title)';
     statusEl.textContent = 'Connected — click again to commit data to repo';
     setSyncBtnState('locked');
+    if (localStorage.getItem(AUTOCOMMIT_KEY) === '1') startAutoCommit();
+    updateAutoCommitUI();
   } catch (e) {
     setToken(null);
+    stopAutoCommit();
     setSyncBtnState('red');
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = e.message;
@@ -777,6 +794,54 @@ async function clearGistData() {
     showToast('Error: ' + e.message);
   }
 }
+
+// ── PERIODIC AUTO-COMMIT ───────────────────────────────────────────────────────
+
+function updateAutoCommitUI() {
+  const on  = autoCommitTimer !== null;
+  const btn = document.getElementById('autoCommitBtn');
+  const info = document.getElementById('autoCommitInfo');
+  if (btn)  { btn.textContent = on ? 'On' : 'Off'; btn.classList.toggle('on', on); }
+  if (info) info.textContent = !ghToken
+    ? 'Connect a token first'
+    : on
+      ? 'Every 5 min' + (autoCommitLast ? ' · last ' + autoCommitLast : '')
+      : 'Off';
+}
+
+async function runAutoCommit() {
+  if (!ghToken) return;
+  try {
+    await repoSave();
+    autoCommitLast = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { /* keep silent; next tick retries */ }
+  updateAutoCommitUI();
+}
+
+function startAutoCommit() {
+  if (autoCommitTimer !== null) return;
+  autoCommitTimer = setInterval(runAutoCommit, AUTOCOMMIT_MS);
+  updateAutoCommitUI();
+}
+
+function stopAutoCommit() {
+  if (autoCommitTimer !== null) { clearInterval(autoCommitTimer); autoCommitTimer = null; }
+  updateAutoCommitUI();
+}
+
+function setAutoCommit(on) {
+  if (on && !ghToken) {
+    showToast('Connect a token before enabling auto-commit');
+    localStorage.setItem(AUTOCOMMIT_KEY, '0');
+    updateAutoCommitUI();
+    return;
+  }
+  localStorage.setItem(AUTOCOMMIT_KEY, on ? '1' : '0');
+  if (on) { startAutoCommit(); runAutoCommit(); showToast('Auto-commit on · every 5 min'); }
+  else    { stopAutoCommit(); showToast('Auto-commit off'); }
+}
+
+function toggleAutoCommit() { setAutoCommit(autoCommitTimer === null); }
 
 // ── STORAGE HELPERS ───────────────────────────────────────────────────────────
 
@@ -1115,6 +1180,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Restore token, then load
   ghToken = getToken();
   updateSyncBadge();
+  // Resume periodic auto-commit if it was enabled and we have a token
+  if (ghToken && localStorage.getItem(AUTOCOMMIT_KEY) === '1') startAutoCommit();
 
   await openDB();
   await loadWithRemote();
@@ -1193,6 +1260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('gistCancelBtn').addEventListener('click', closeGistSettings);
   document.getElementById('gistSaveBtn').addEventListener('click', onSyncBtnClick);
   document.getElementById('gistDeleteBtn').addEventListener('click', clearGistData);
+  document.getElementById('autoCommitBtn').addEventListener('click', toggleAutoCommit);
   document.getElementById('gistTokenInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('gistSaveBtn').click();
   });
