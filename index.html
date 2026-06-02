@@ -183,6 +183,20 @@ body{
 .icon-btn--primary svg{stroke:var(--bg)}
 .icon-btn--danger:hover{color:var(--danger);border-color:var(--danger)}
 
+/* GitHub sync button states */
+#gistSaveBtn{transition:background .2s,border-color .2s,color .2s,opacity .2s}
+.sync-btn--red{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.sync-btn--red:hover{background:#a11717;border-color:#a11717;color:#fff}
+.sync-btn--red svg{stroke:#fff}
+.sync-btn--amber{background:#d97706;border-color:#d97706;color:#fff;cursor:wait}
+.sync-btn--amber svg{stroke:#fff}
+.sync-btn--locked{background:var(--surface2);border-color:var(--border2);color:var(--text)}
+.sync-btn--locked:hover{background:var(--surface2);border-color:var(--ink);color:var(--text)}
+.sync-btn--locked svg{stroke:var(--text)}
+.sync-btn--green{background:#15803d;border-color:#15803d;color:#fff}
+.sync-btn--green:hover{background:#13713a;border-color:#13713a;color:#fff;opacity:1}
+.sync-btn--green svg{stroke:#fff}
+
 /* SVG icons inherit --icon color via CSS currentColor trick */
 .icon-btn svg,.adm-tab svg,.msg-type-pill svg,.file-label svg,.form-group label svg{
   stroke:var(--icon);transition:stroke .2s;flex-shrink:0
@@ -656,28 +670,59 @@ async function verifyToken(token) {
 
 // ── SYNC SETTINGS UI ─────────────────────────────────────────────────────────
 
+// ── SYNC BUTTON STATE MACHINE ──
+// red = not connected · amber = connecting · locked = connected/established · green = armed to commit
+let syncBtnState = 'red';
+const SYNC_ICONS = {
+  red:    '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l10 10M11 5.5V3.5a1 1 0 0 0-1-1H8M5 10.5v2a1 1 0 0 0 1 1h2"/></svg>',
+  amber:  '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1s" repeatCount="indefinite"/></path></svg>',
+  locked: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>',
+  green:  '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3M5 6l3-3 3 3M3.5 13h9"/></svg>'
+};
+const SYNC_LABELS = { red:'Connect', amber:'Connecting…', locked:'Connected', green:'Commit to repo' };
+
+function setSyncBtnState(state) {
+  syncBtnState = state;
+  const btn = document.getElementById('gistSaveBtn');
+  if (!btn) return;
+  btn.classList.remove('icon-btn--primary','sync-btn--red','sync-btn--amber','sync-btn--locked','sync-btn--green');
+  btn.classList.add('sync-btn--' + state);
+  btn.disabled = (state === 'amber');
+  btn.innerHTML = SYNC_ICONS[state] + '<span>' + SYNC_LABELS[state] + '</span>';
+}
+
 function openGistSettings() {
   document.getElementById('gistOverlay').classList.add('open');
   document.getElementById('gistTokenInput').value = ghToken || '';
   document.getElementById('gistStatus').textContent = '';
+  setSyncBtnState(ghToken ? 'locked' : 'red');
   setTimeout(() => document.getElementById('gistTokenInput').focus(), 80);
 }
 function closeGistSettings() {
   document.getElementById('gistOverlay').classList.remove('open');
 }
 
-async function saveGistSettings() {
+// Dispatcher: behaviour depends on the current button state
+async function onSyncBtnClick() {
+  if (syncBtnState === 'locked') { setSyncBtnState('green'); return; }  // arm
+  if (syncBtnState === 'green')  { await commitToRepo(); return; }       // commit
+  await connectGist();                                                   // red → connect
+}
+
+async function connectGist() {
   const tokenVal = document.getElementById('gistTokenInput').value.trim();
   const statusEl = document.getElementById('gistStatus');
-  statusEl.style.color = 'var(--muted)';
-  statusEl.textContent = 'Verifying…';
 
   if (!tokenVal) {
     setToken(null);
-    closeGistSettings();
-    showToast('GitHub sync disabled — using localStorage');
+    setSyncBtnState('red');
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Enter a token to connect';
     return;
   }
+  setSyncBtnState('amber');
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Verifying…';
   try {
     const login = await verifyToken(tokenVal);
     ghToken = tokenVal;   // set before repoLoad
@@ -691,10 +736,32 @@ async function saveGistSettings() {
       showToast('Connected as @' + login + ' · No existing data, ready to publish');
     }
     setToken(tokenVal);
-    closeGistSettings();
+    statusEl.style.color = 'var(--age1-title)';
+    statusEl.textContent = 'Connected — click again to commit data to repo';
+    setSyncBtnState('locked');
+  } catch (e) {
+    setToken(null);
+    setSyncBtnState('red');
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = e.message;
+  }
+}
+
+async function commitToRepo() {
+  const statusEl = document.getElementById('gistStatus');
+  setSyncBtnState('amber');
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Committing…';
+  try {
+    await repoSave();
+    showToast('Committed to kneuralabs/beacon');
+    statusEl.style.color = 'var(--age1-title)';
+    statusEl.textContent = 'Committed · ' + feeds.length + ' post(s) on repo';
+    setSyncBtnState('locked');
   } catch (e) {
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = e.message;
+    setSyncBtnState('locked');
   }
 }
 
@@ -1122,10 +1189,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // GitHub sync settings
   document.getElementById('gistSettingsBtn').addEventListener('click', openGistSettings);
   document.getElementById('gistCancelBtn').addEventListener('click', closeGistSettings);
-  document.getElementById('gistSaveBtn').addEventListener('click', saveGistSettings);
+  document.getElementById('gistSaveBtn').addEventListener('click', onSyncBtnClick);
   document.getElementById('gistDeleteBtn').addEventListener('click', clearGistData);
   document.getElementById('gistTokenInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('gistSaveBtn').click();
+  });
+  // Editing the token unlocks the button so a new connection can be established
+  document.getElementById('gistTokenInput').addEventListener('input', e => {
+    if (syncBtnState !== 'amber' && e.target.value.trim() !== (ghToken || '')) {
+      setSyncBtnState('red');
+    } else if (syncBtnState === 'red' && e.target.value.trim() === (ghToken || '') && ghToken) {
+      setSyncBtnState('locked');
+    }
   });
 
   document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
