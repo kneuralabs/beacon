@@ -233,7 +233,7 @@ body{
 .sync-amber{background:#d97706;border-color:#d97706;color:#fff;cursor:wait}
 .sync-amber:hover{background:#d97706;border-color:#d97706;color:#fff}
 .sync-amber svg{stroke:#fff}
-.sync-green{background:#15803d;border-color:#15803d;color:#fff;cursor:default}
+.sync-green{background:#15803d;border-color:#15803d;color:#fff;cursor:pointer}
 .sync-green:hover{background:#15803d;border-color:#15803d;color:#fff;opacity:1}
 .sync-green svg{stroke:#fff}
 
@@ -761,7 +761,7 @@ const SYNC_IC = {
   amber: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1s" repeatCount="indefinite"/></path></svg>',
   green: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8.5 6.5,12 13,4.5"/></svg>'
 };
-const SYNC_TITLE = { red:'Connect to repo', amber:'Connecting…', green:'Connected · auto-committing every minute' };
+const SYNC_TITLE = { red:'Connect to repo', amber:'Connecting…', green:'Connected · click to commit now (auto every 1 min)' };
 
 function setSync(state) {
   syncState = state;
@@ -784,14 +784,26 @@ function openTokenPrompt() {
 }
 function closeTokenPrompt() { document.getElementById('gistOverlay').classList.remove('open'); }
 
-// The one button. red → open token routine · green → locked (status only).
-function onSyncBtnClick() {
-  if (syncState === 'green') {
-    showToast('Connected · auto-commit every 1 min' + (autoCommitLast ? ' · last ' + autoCommitLast : ''));
-    return;
-  }
+// The one button. red → open token routine · green → commit to repo now.
+async function onSyncBtnClick() {
   if (syncState === 'amber') return;
+  if (syncState === 'green') { await commitNow(); return; }
   openTokenPrompt();
+}
+
+// Manual commit while connected (auto-commit keeps running on its own timer)
+async function commitNow() {
+  if (!ghToken) { setSync('red'); return; }
+  setSync('amber');
+  try {
+    await repoSave();
+    autoCommitLast = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setSync('green');
+    showToast('Committed · ' + feeds.length + ' post(s) to kneuralabs/beacon');
+  } catch (e) {
+    setSync('red');
+    showToast('Commit failed: ' + e.message);
+  }
 }
 
 // Verify a token, load feeds, then lock into auto-commit. Surfaces errors in red.
