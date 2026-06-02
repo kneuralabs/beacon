@@ -659,6 +659,27 @@ async function repoLoad() {
 // PUT / create-or-update → needs sha when updating
 async function repoSave() {
   if (!ghToken) return;
+
+  // Guarantee images survive the commit: restore any missing mediaData from this
+  // device's IndexedDB, then — for anything still missing — preserve it from the
+  // current repo copy so we never overwrite a published image with nothing.
+  await reattachLocalMedia();
+  if (feeds.some(it => !it.mediaData && it.mediaRef)) {
+    try {
+      const r = await repoLoad();
+      if (r && r.feeds) {
+        const byId = {};
+        r.feeds.forEach(p => { byId[p.id] = p; });
+        for (const item of feeds) {
+          if (!item.mediaData && item.mediaRef && byId[item.id] && byId[item.id].mediaData) {
+            item.mediaData = byId[item.id].mediaData;
+            item.mediaType = item.mediaType || byId[item.id].mediaType;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   // Get current sha first (required for updates)
   let sha = null;
   try {
@@ -907,6 +928,9 @@ async function loadWithRemote() {
   } catch (_) {
     // Network completely unavailable — localStorage feeds already loaded above
   }
+  // Re-attach images from this device's IndexedDB for any item the (light)
+  // localStorage cache dropped, so photos show even before/without the network.
+  await reattachLocalMedia();
 }
 
 const ROLE_LABELS = {
@@ -957,6 +981,30 @@ async function deleteMediaBlob(id) {
     tx.objectStore('media').delete(id);
     tx.oncomplete = () => res();
   });
+}
+function blobToDataURL(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+// Restore embedded media (mediaData) from this device's IndexedDB blob for any
+// item that lost it (e.g. after reloading from the media-light localStorage
+// cache). This keeps the image in the feed so commits never drop it.
+async function reattachLocalMedia() {
+  for (const item of feeds) {
+    if (!item.mediaData && item.mediaRef) {
+      try {
+        const m = await getMediaBlob(item.mediaRef);
+        if (m && m.blob) {
+          item.mediaData = await blobToDataURL(m.blob);
+          item.mediaType = item.mediaType || m.mimeType;
+        }
+      } catch (_) {}
+    }
+  }
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
