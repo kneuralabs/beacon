@@ -754,14 +754,14 @@ async function verifyToken(token) {
 
 // ── SINGLE SYNC BUTTON ─────────────────────────────────────────────────────────
 // One ultra-minimal admin button. red = not connected (click → token routine) ·
-// amber = connecting · green = connected & locked to auto-commit every 1 minute.
+// amber = connecting · green = connected (click → commit now; auto-commits every 1 minute).
 let syncState = 'red';
 const SYNC_IC = {
   red:   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l10 10M11 5.5V3.5a1 1 0 0 0-1-1H8M5 10.5v2a1 1 0 0 0 1 1h2"/></svg>',
   amber: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1s" repeatCount="indefinite"/></path></svg>',
   green: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8.5 6.5,12 13,4.5"/></svg>'
 };
-const SYNC_TITLE = { red:'Connect to repo', amber:'Connecting…', green:'Connected · auto-committing every minute' };
+const SYNC_TITLE = { red:'Connect to repo', amber:'Connecting…', green:'Connected · click to commit now (auto every minute)' };
 
 function setSync(state) {
   syncState = state;
@@ -784,14 +784,31 @@ function openTokenPrompt() {
 }
 function closeTokenPrompt() { document.getElementById('gistOverlay').classList.remove('open'); }
 
-// The one button. red → open token routine · green → locked (status only).
-function onSyncBtnClick() {
+// The one button. red → open token routine · green → commit now.
+async function onSyncBtnClick() {
+  if (syncState === 'amber') return;
   if (syncState === 'green') {
-    showToast('Connected · auto-commit every 1 min' + (autoCommitLast ? ' · last ' + autoCommitLast : ''));
+    await commitNow();
     return;
   }
-  if (syncState === 'amber') return;
   openTokenPrompt();
+}
+
+// Manual commit: push the current feeds immediately when the button is clicked
+// after a successful connection. Mirrors the auto-commit path but with toasts.
+async function commitNow() {
+  if (!ghToken) return;
+  setSync('amber');
+  showToast('Committing…');
+  try {
+    await repoSave();
+    autoCommitLast = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setSync('green');
+    showToast('Committed · ' + autoCommitLast);
+  } catch (e) {
+    setSync('red');
+    showToast('Commit failed: ' + e.message);
+  }
 }
 
 // Verify a token, load feeds, then lock into auto-commit. Surfaces errors in red.
