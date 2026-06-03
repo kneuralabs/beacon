@@ -119,10 +119,10 @@ body{
 
 
 /* ── GRID ── */
-.posts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--border);border-left:1px solid var(--border);align-items:start;transition:border-color .25s}
+.posts-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--border);border-left:1px solid var(--border);align-items:start;transition:border-color .25s}
 .grid-item{background:var(--paper);border-bottom:1px solid var(--border);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1.2rem 1.3rem;height:auto;transition:background .2s,border-color .25s}
 .grid-item:hover{background:var(--surface2)}
-.grid-item--featured{grid-column:span 2}
+.grid-item--featured{grid-column:span 2;grid-row:span 2}
 
 /* ── FEED TYPOGRAPHY ── */
 .item-title{display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;margin-bottom:.3rem}
@@ -292,7 +292,7 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
 /* ── RESPONSIVE ── */
 @media(max-width:1000px){
   .posts-grid{grid-template-columns:repeat(2,1fr)}
-  .grid-item--featured{grid-column:span 2}
+  .grid-item--featured{grid-column:span 2;grid-row:span 1}
   .admin-layout{grid-template-columns:1fr;gap:1.5rem}
 }
 @media(max-width:700px){
@@ -321,12 +321,13 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
 /* Tablet portrait */
 @media(min-width:600px) and (max-width:900px) and (orientation:portrait){
   .posts-grid{grid-template-columns:repeat(2,1fr)}
-  .grid-item--featured{grid-column:span 2}
+  .grid-item--featured{grid-column:span 2;grid-row:span 1}
   .grid-item--featured .item-title-text{font-size:clamp(1.3rem,4vw,2rem)}
 }
 /* Tablet landscape */
 @media(min-width:900px) and (max-width:1200px) and (orientation:landscape){
-  .posts-grid{grid-template-columns:repeat(3,1fr)}
+  .posts-grid{grid-template-columns:repeat(4,1fr)}
+  .grid-item--featured{grid-column:span 2;grid-row:span 2}
   .grid-item--featured .item-title-text{font-size:clamp(1.4rem,3.5vw,2.2rem)}
 }
 @media(min-width:1400px){.wrap{padding:0 4rem 5rem}}
@@ -337,7 +338,7 @@ footer{margin-top:3rem;text-align:center;font-size:.6rem;color:var(--muted2);bor
 @media(min-width:2100px){
   .wrap{max-width:2400px;margin:0 auto;padding:0 4rem 5rem}
   .posts-grid{grid-template-columns:repeat(4,1fr)}
-  .grid-item--featured{grid-column:span 2}
+  .grid-item--featured{grid-column:span 2;grid-row:span 2}
 }
 </style>
 </head>
