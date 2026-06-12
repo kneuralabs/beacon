@@ -186,14 +186,30 @@ body{
 .grid-item--featured .attached-media{max-width:560px}
 
 /* ── AWARD POSTER ── */
-.award-poster{aspect-ratio:1/1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;border-radius:3px;margin:.5rem 0;padding:1.5rem;background:conic-gradient(from 220deg at 50% 55%,#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#c77dff,#ff6b6b)}
-.award-poster::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.18)}
+.award-poster{aspect-ratio:2/3;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;border-radius:4px;margin:.5rem auto;padding:2.2rem 1.8rem 2rem;background:linear-gradient(168deg,#1c1530 0%,#0d0a14 50%,#14101f 100%);border:1px solid rgba(200,144,26,.55);box-shadow:0 0 0 1px rgba(0,0,0,.9),0 0 0 5px rgba(200,144,26,.08),0 24px 60px rgba(0,0,0,.65)}
+.award-poster::before{content:'';position:absolute;inset:8px;border:1px solid rgba(224,178,96,.16);border-radius:2px;pointer-events:none;z-index:0}
+.award-poster::after{content:'';position:absolute;top:18%;left:50%;transform:translateX(-50%);width:260px;height:260px;background:radial-gradient(circle,rgba(224,178,96,.09) 0%,transparent 70%);border-radius:50%;pointer-events:none;z-index:0}
 .award-poster>*{position:relative;z-index:1}
-.award-poster-icon{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.15);backdrop-filter:blur(4px);border:1.5px solid rgba(255,255,255,.35);margin:0 auto .8rem}
-.award-poster-name{font-family:var(--aptos);font-size:clamp(1rem,4vw,1.4rem);font-weight:700;color:#fff;line-height:1.2;letter-spacing:-.02em;margin-bottom:.3rem;text-shadow:0 1px 8px rgba(0,0,0,.3)}
-.award-poster-recipient{font-size:clamp(.75rem,2.5vw,.95rem);font-weight:500;color:rgba(255,255,255,.85);margin-bottom:.2rem}
-.award-poster-category{font-size:clamp(.55rem,1.5vw,.65rem);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:0}
-.award-poster-label,.award-poster-org{display:none}
+.award-poster-ornament{display:flex;align-items:center;gap:.55rem;width:72%;margin:0 auto .9rem;font-size:.72rem;color:rgba(224,178,96,.5);letter-spacing:.15em}
+.award-poster-ornament::before,.award-poster-ornament::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(224,178,96,.4))}
+.award-poster-ornament::after{background:linear-gradient(270deg,transparent,rgba(224,178,96,.4))}
+.award-poster-brand{display:flex;flex-direction:column;align-items:center;gap:.38rem;margin-bottom:1.1rem}
+.award-poster-logo{width:40px;height:40px;border-radius:10px;box-shadow:0 2px 16px rgba(224,178,96,.28),0 0 0 1px rgba(224,178,96,.18)}
+.award-poster-orgname{font-size:.48rem;letter-spacing:.24em;text-transform:uppercase;color:rgba(224,178,96,.75);font-weight:700}
+.award-medal{position:relative;width:84px;height:108px;margin:0 auto 1.2rem;filter:drop-shadow(0 6px 22px rgba(200,144,26,.5))}
+.award-medal-ribbon{position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:52px;background:linear-gradient(to right,#6b3a00 0%,#c8901a 18%,#f3d9a6 36%,#e0b260 50%,#f3d9a6 64%,#c8901a 82%,#6b3a00 100%);clip-path:polygon(0 0,100% 0,100% 86%,50% 100%,0 86%)}
+.award-medal-ribbon::after{content:'';position:absolute;top:0;left:26%;width:20%;height:100%;background:rgba(255,255,255,.22)}
+.award-medal-disc{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:72px;height:72px;border-radius:50%;background:conic-gradient(from 40deg,#6b3a00,#c8901a 20%,#f3d9a6 36%,#e0b260 50%,#c8901a 68%,#f3d9a6 82%,#e0b260 90%,#6b3a00);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 18px rgba(0,0,0,.55),inset 0 1.5px 5px rgba(255,255,255,.28),inset 0 -1px 4px rgba(0,0,0,.25)}
+.award-medal-disc::before{content:'';position:absolute;inset:5px;border-radius:50%;background:radial-gradient(circle at 36% 32%,#f3d9a6 0%,#e0b260 46%,#b07010 100%);z-index:0}
+.award-medal-disc::after{content:'';position:absolute;inset:5px;border-radius:50%;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.35) 0%,transparent 55%);z-index:1}
+.award-medal-star{position:relative;z-index:2}
+.award-poster-rule{width:62%;height:1px;background:linear-gradient(90deg,transparent,rgba(224,178,96,.5),transparent);margin:.65rem auto}
+.award-poster-type{font-size:.46rem;letter-spacing:.24em;text-transform:uppercase;color:#e0b260;font-weight:700;margin-bottom:.28rem}
+.award-poster-name{font-family:var(--blackletter);font-size:clamp(1.45rem,5.5vw,2.1rem);font-weight:600;color:#f3d9a6;line-height:1.1;letter-spacing:.025em;margin-bottom:.1rem;text-shadow:0 2px 22px rgba(224,178,96,.32)}
+.award-poster-presented{font-size:.42rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(237,232,216,.28);margin:.5rem 0 .2rem}
+.award-poster-recipient{font-family:var(--blackletter);font-size:clamp(1.75rem,7vw,2.8rem);font-weight:600;color:#fff;line-height:1;letter-spacing:.015em;text-shadow:0 2px 22px rgba(255,255,255,.12);margin-bottom:.08rem}
+.award-poster-category{font-size:.44rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(224,178,96,.58);margin:.45rem 0 0}
+.award-poster-year{font-size:.4rem;letter-spacing:.16em;text-transform:uppercase;color:rgba(237,232,216,.18);margin-top:.85rem}
 
 /* ── ADMIN ── */
 .admin-layout{display:grid;grid-template-columns:1fr 340px;gap:2rem;align-items:start}
@@ -1128,13 +1144,46 @@ function awardPoster(item) {
   const name  = esc(item.awardName || item.title || '');
   const cat   = esc(item.awardCategory || '');
   const recip = esc(item.awardRecipient || '');
-  const role  = esc(ROLE_LABELS[item.authorRole] || item.authorRole || '');
+  const year  = new Date(item.timestamp).getFullYear();
+  const logoSVG =
+    '<svg class="award-poster-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40">' +
+      '<defs>' +
+        '<linearGradient id="ap-tile" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="#2e274a"/><stop offset="1" stop-color="#1a1422"/>' +
+        '</linearGradient>' +
+        '<radialGradient id="ap-dot" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="0" stop-color="#f3d9a6"/><stop offset="1" stop-color="#e0b260"/>' +
+        '</radialGradient>' +
+      '</defs>' +
+      '<rect x="3.5" y="3.5" width="57" height="57" rx="14" fill="url(#ap-tile)"/>' +
+      '<rect x="3.5" y="3.5" width="57" height="57" rx="14" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>' +
+      '<text x="31" y="45.5" text-anchor="middle" font-family="\'Cormorant Garamond\',Georgia,serif" font-weight="600" font-size="50" fill="#ede8d8">b</text>' +
+      '<rect x="3.5" y="31" width="57" height="1.6" fill="#000" fill-opacity="0.55"/>' +
+      '<circle cx="46" cy="19" r="6.5" fill="#e0b260" fill-opacity="0.18"/>' +
+      '<circle cx="46" cy="19" r="3.4" fill="url(#ap-dot)"/>' +
+    '</svg>';
+  const starSVG =
+    '<svg class="award-medal-star" width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M16 3 L18.94 11.27 L27.8 11.31 L20.72 16.56 L23.25 25.06 L16 20.18 L8.75 25.06 L11.28 16.56 L4.2 11.31 L13.06 11.27 Z" fill="rgba(255,255,255,0.94)" stroke="rgba(255,220,120,0.35)" stroke-width="0.5"/>' +
+    '</svg>';
   return '<div class="award-poster">' +
-    '<div class="award-poster-icon">' + IC.trophy + '</div>' +
-    '<div class="award-poster-name">' + name + '</div>' +
+    '<div class="award-poster-ornament">✦ ✦ ✦</div>' +
+    '<div class="award-poster-brand">' +
+      logoSVG +
+      '<div class="award-poster-orgname">Kneuralabs</div>' +
+    '</div>' +
+    '<div class="award-medal">' +
+      '<div class="award-medal-ribbon"></div>' +
+      '<div class="award-medal-disc">' + starSVG + '</div>' +
+    '</div>' +
+    '<div class="award-poster-rule"></div>' +
+    (name ? '<div class="award-poster-type">Award of Excellence</div><div class="award-poster-name">' + name + '</div>' : '') +
+    '<div class="award-poster-rule"></div>' +
+    '<div class="award-poster-presented">Presented to</div>' +
     (recip ? '<div class="award-poster-recipient">' + recip + '</div>' : '') +
-    (cat  ? '<div class="award-poster-category">' + cat + '</div>' : '') +
-    '</div>';
+    (cat   ? '<div class="award-poster-category">' + cat + '</div>' : '') +
+    '<div class="award-poster-year">' + year + '</div>' +
+  '</div>';
 }
 
 // Expand/collapse an older post's summary
