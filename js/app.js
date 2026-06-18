@@ -963,6 +963,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'Enter') document.getElementById('tokenSettingsTestBtn').click();
   });
 
+  // Dot always surfaces — revealed by animation end OR this 4.5s fallback
+  setTimeout(() => document.getElementById('dotBtn')?.classList.add('revealed'), 4500);
+
   initRichEditor();
 
   // ── BEACON FLIP CLOCK ANIMATION ──
