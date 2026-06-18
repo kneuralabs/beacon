@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script>
-(function(){var K="kn-auth-session",S="https://sso.kneuralabs.com/";var p=new URLSearchParams(location.search),t=p.get("kn-auth");if(t){try{sessionStorage.setItem(K,t);}catch(e){}p.delete("kn-auth");history.replaceState(null,"",location.pathname+(p.toString()?"?"+p:"")+location.hash);}if(!sessionStorage.getItem(K)){location.replace(S+"?redirect="+encodeURIComponent(location.href));}})();
+(function(){var K="kn-auth-session",S="https://sso.kneuralabs.com/";var p=new URLSearchParams(location.search),t=p.get("kn-auth");if(t){try{sessionStorage.setItem(K,t);}catch(e){}p.delete("kn-auth");window.history.replaceState(null,'',location.pathname);}})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
 <title>Beacon — Internal news from Kneuralabs</title>
@@ -61,7 +61,8 @@
       <span class="masthead-edition">Internal Edition</span>
     </div>
     <div class="logo-name-wrap">
-      <div class="logo-name" id="beaconLogo"><span class="bl" data-i="0">b</span><span class="bl" data-i="1">e</span><span class="bl" data-i="2">a</span><span class="bl" data-i="3">c</span><span class="bl" data-i="4">o</span><span class="bl" data-i="5">n</span><button id="dotBtn" title="Access admin"></button></div>
+      <div class="logo-name" id="beaconLogo"><span class="bl" data-i="0">b</span><span class="bl" data-i="1">e</span><span class="bl" data-i="2">a</span><span class="bl" data-i="3">c</span><span class="bl" data-i="4">o</span><span class="bl" data-i="5">n</span></div>
+      <button id="dotBtn" class="dot-btn" title="Admin" style="display:none"></button>
     </div>
     <div class="logo-tag">Internal news from Kneuralabs</div>
 
@@ -86,16 +87,16 @@
   <div id="gistOverlay" class="magic-overlay">
     <div class="magic-modal" style="width:min(380px,94vw)">
       <div style="font-size:.7rem;letter-spacing:.1em;color:var(--muted);margin-bottom:.8rem;display:flex;align-items:center;gap:.4rem">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1C4.13 1 1 4.13 1 8c0 3.09 2.01 5.72 4.79 6.65.35.06.48-.15.48-.34v-1.2c-1.95.42-2.36-.94-2.36-.94-.32-.81-.78-1.03-.78-1.03-.64-.43.05-.42.05-.42.7.05 1.07.72 1.07.72.62 1.07 1.63.76 2.03.58.06-.45.24-.76.44-.94-1.56-.18-3.19-.78-3.19-3.46 0-.76.27-1.39.72-1.88-.07-.18-.31-.89.07-1.85 0 0 .59-.19 1.92.72A6.68 6.68 0 0 1 8 4.91c.59 0 1.19.08 1.75.23 1.33-.9 1.92-.72 1.92-.72.38.96.14 1.67.07 1.85.45.49.72 1.12.72 1.88 0 2.69-1.64 3.28-3.2 3.45.25.22.48.64.48 1.29v1.92c0 .19.13.4.48.33A7.01 7.01 0 0 0 15 8c0-3.87-3.13-7-7-7z"/></svg>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1C4.13 1 1 4.13 1 8c0 3.09 2[...]
         GITHUB SYNC · kneuralabs/beacon
       </div>
       <div style="font-size:.72rem;color:var(--muted);margin-bottom:1rem;line-height:1.55">
         Feeds are always read from <strong>kneuralabs/beacon</strong> on every device — no token needed to view.<br>
-        To <strong>publish or edit</strong> posts, provide a token with <code style="background:var(--surface2);padding:.1rem .3rem;border-radius:2px">contents: write</code> permission on that repo.
+        To <strong>publish or edit</strong> posts, provide a token with <code style="background:var(--surface2);padding:.1rem .3rem;border-radius:2px">contents: write</code> permission on that rep[...]
       </div>
       <div style="margin-bottom:.9rem">
         <label style="font-size:.6rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem">Personal Access Token</label>
-        <input type="password" id="gistTokenInput" placeholder="ghp_…" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:3px;background:var(--bg);color:var(--text);font-size:.85rem;font-family:var(--aptos)">
+        <input type="password" id="gistTokenInput" placeholder="ghp_…" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:3px;background:var(--bg);color:var(--text);font-size:.75rem">
       </div>
       <div style="font-size:.66rem;color:var(--muted);margin-bottom:.9rem;line-height:1.5">Once connected, posts are committed to the repo on every publish.</div>
       <div id="gistStatus" style="font-size:.7rem;min-height:1rem;margin-bottom:.6rem"></div>
@@ -105,6 +106,38 @@
       </div>
     </div>
   </div>
+
+  <!-- GITHUB TOKEN SETTINGS OVERLAY -->
+  <div id="tokenSettingsOverlay" class="magic-overlay">
+    <div class="magic-modal" style="width:min(380px,94vw)">
+      <div style="font-size:.7rem;letter-spacing:.1em;color:var(--muted);margin-bottom:.8rem;display:flex;align-items:center;gap:.4rem">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1C4.13 1 1 4.13 1 8c0 3.09 2.05 5.71 4.9 6.6M8 1c3.87 0 7 2.13 7 4.76"/></svg>
+        GitHub Token Settings
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:1rem;line-height:1.55">
+        Configure your GitHub token to <strong>read/write files</strong> and enable <strong>auto-commits</strong>.
+      </div>
+      <div style="margin-bottom:.9rem">
+        <label style="font-size:.6rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem">Personal Access Token</label>
+        <input type="password" id="tokenSettingsInput" placeholder="ghp_…" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:3px;background:var(--bg);color:var(--text);font-size:.75rem">
+      </div>
+      <div style="margin-bottom:.9rem">
+        <label style="font-size:.6rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem">Connection Status</label>
+        <div id="tokenSettingsStatus" style="display:flex;align-items:center;gap:.5rem;padding:.6rem;border-radius:3px;background:var(--surface2);min-height:2rem">
+          <span id="tokenStatusIcon" style="display:inline-flex;align-items:center;width:16px;height:16px">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="5"/></svg>
+          </span>
+          <span id="tokenStatusText" style="font-size:.7rem;color:var(--muted)">Ready to connect</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button id="tokenSettingsCancelBtn" class="icon-btn">Cancel</button>
+        <button id="tokenSettingsTestBtn" class="icon-btn icon-btn--primary">Test Connection</button>
+        <button id="tokenSettingsSaveBtn" class="icon-btn icon-btn--primary" style="display:none">Save Token</button>
+      </div>
+    </div>
+  </div>
+
   <div id="readonlyView">
     <div class="posts-grid" id="unified-grid"></div>
     <div style="text-align:right;margin-top:1rem;font-size:.7rem;color:var(--muted2)"><span id="internalCount"></span></div>
@@ -126,16 +159,16 @@
         </div>
         <div class="admin-tabs">
           <button class="adm-tab active" data-type="Announcement" title="Announcements">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h2l4-3v10l-4-3H2V6z"/><path d="M14 5c.5 1 .5 5 0 6"/><path d="M11.5 6.5c.3.5.3 2.5 0 3"/></svg>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h2l4-3v10l-4-3H2V6z"/><path d="M14 5c.5 1 .5 3 0 4m0-7c1 2 1 5 0 7"/></svg>
           </button>
           <button class="adm-tab" data-type="Notice" title="Notices">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7.5" x2="8" y2="11"/><circle cx="8" cy="5" r=".8" fill="currentColor" stroke="none"/></svg>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7.5" x2="8" y2="8.5"/><line x1="8" y1="4" x2="8" y2="5.5"/></svg>
           </button>
           <button class="adm-tab" data-type="Event" title="Events">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="12" rx="1.5"/><path d="M5 2v2M11 2v2M2 7h12"/></svg>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="12" rx="1.5"/><path d="M5 1v4M11 1v4"/></svg>
           </button>
           <button class="adm-tab" data-type="Award" title="Awards">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6v5a3 3 0 0 1-6 0V2z"/><path d="M5 4H3a1 1 0 0 0 0 4h2"/><path d="M11 4h2a1 1 0 0 0 0 4h-2"/><path d="M8 10v3"/><path d="M5 13h6"/></svg>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6v5a3 3 0 0 1-6 0V2z"/><path d="M5 4H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2"/></svg>
           </button>
         </div>
         <div id="adm-Announcement" class="adm-panel"></div>
@@ -158,16 +191,19 @@
             <label>Type</label>
             <div class="msg-type-pills">
               <button class="msg-type-pill t-Announcement active" data-type="Announcement" title="Announcement">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h2l4-3v10l-4-3H2V6z"/><path d="M14 5c.5 1 .5 5 0 6"/><path d="M11.5 6.5c.3.5.3 2.5 0 3"/></svg>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h2l4-3v10l-4-3H2V6z"/><path d="M14 5c.5 1 .5 3 0 4m0-7c1 2 1 5 0 7"/></svg>
               </button>
               <button class="msg-type-pill t-Notice" data-type="Notice" title="Notice">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7.5" x2="8" y2="11"/><circle cx="8" cy="5" r=".8" fill="currentColor" stroke="none"/></svg>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7.5" x2="8" y2="8.5"/><line x1="8" y1="4" x2="8" y2="5.5"/></svg>
               </button>
               <button class="msg-type-pill t-Event" data-type="Event" title="Event">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="12" rx="1.5"/><path d="M5 2v2M11 2v2M2 7h12"/></svg>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="12" rx="1.5"/><path d="M5 1v4M11 1v4"/></svg>
               </button>
               <button class="msg-type-pill t-Award" data-type="Award" title="Award">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6v5a3 3 0 0 1-6 0V2z"/><path d="M5 4H3a1 1 0 0 0 0 4h2"/><path d="M11 4h2a1 1 0 0 0 0 4h-2"/><path d="M8 10v3"/><path d="M5 13h6"/></svg>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6v5a3 3 0 0 1-6 0V2z"/><path d="M5 4H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2"/></svg>
+              </button>
+              <button id="tokenSettingsBtn" class="msg-type-pill" title="GitHub Token Settings" style="border-color:var(--border2);color:var(--muted)">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="1.5"/><path d="M8 2v1.5M8 12.5V14M14 8h-1.5M2 8H3.5M11.8 4.2l-1.06 1.06M6.26 9.74l-1.06 1.06M4.2 4.2l1.06 1.06M9.74 9.74l1.06 1.06"/></svg>
               </button>
             </div>
             <div style="margin-top:.4rem;font-size:.7rem;color:var(--muted)"><span id="pillTypeLabel">Announcement</span></div>
@@ -193,7 +229,7 @@
 
           <div id="eventFields" style="display:none" class="form-group">
             <label>
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="12" rx="1.5"/><path d="M5 2v2M11 2v2M2 7h12"/></svg>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="12" rx="1.5"/><path d="M5 1v4M11 1v4"/></svg>
               Event Date
             </label>
             <input type="date" id="eventDate">
@@ -202,7 +238,7 @@
           <div id="awardFields" style="display:none">
             <div class="form-group">
               <label>
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6v5a3 3 0 0 1-6 0V2z"/><path d="M5 4H3a1 1 0 0 0 0 4h2"/><path d="M11 4h2a1 1 0 0 0 0 4h-2"/><path d="M8 10v3"/><path d="M5 13h6"/></svg>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6v5a3 3 0 0 1-6 0V2z"/><path d="M5 4H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2"/></svg>
                 Award Type *
               </label>
               <select id="awardName">
@@ -232,11 +268,11 @@
             </div>
           </div>
 
-          <div class="form-group"><label>Message <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted2);font-size:.6rem">— select text to format</span></label><div id="intContent" class="rich-editor" contenteditable="true" data-ph="Write your message…"></div></div>
+          <div class="form-group"><label>Message <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted2);font-size:.6rem">— select text to format</span></label><div id="intContent" contenteditable="true" style="border:1px solid var(--border);border-radius:4px;min-height:8rem;padding:.6rem;outline:none;white-space:pre-wrap;word-wrap:break-word;font-size:.85rem;line-height:1.5;background:var(--bg)"></div></div>
 
           <div class="form-group">
             <label for="mediaUpload" class="file-label">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6l-6 6a3 3 0 0 1-4.2-4.2l6.3-6.3a1.8 1.8 0 0 1 2.5 2.6L5.5 10.4a.75.75 0 0 1-1-1L10 4"/></svg>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6l-6 6a3 3 0 0 1-4.2-4.2l6.3-6.3a1.8 1.8 0 0 1 2.6 2.5L6.2 9.8"/></svg>
               Attach photo
               <input type="file" id="mediaUpload" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" style="display:none">
             </label>
