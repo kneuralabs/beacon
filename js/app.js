@@ -41,7 +41,7 @@ async function ghFetch(path, opts = {}) {
   });
   if (res.status === 404) return null;   // file doesn't exist yet
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+    const err = await res.json().catch(() => ({ message: 'Failed to parse error response' }));
     const e = new Error(err.message || ('GitHub API ' + res.status));
     e.status = res.status;
     throw e;
@@ -262,7 +262,7 @@ function persistLocal() {
 }
 
 function load() {
-  try { feeds = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { feeds = []; }
+  try { feeds = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch (e) { console.warn('Failed to parse cached feeds:', e); feeds = []; }
 }
 
 async function loadWithRemote() {
@@ -323,8 +323,9 @@ async function storeMediaBlob(id, blob, mimeType) {
 }
 async function getMediaBlob(id) {
   const db = await openDB();
-  return new Promise(res => {
+  return new Promise((res, rej) => {
     const tx = db.transaction(['media'], 'readonly');
+    tx.onerror = () => rej(tx.error);
     const req = tx.objectStore('media').get(id);
     req.onsuccess = () => res(req.result);
   });
@@ -457,8 +458,13 @@ function initRichEditor() {
   ed.addEventListener('blur', () => setTimeout(() => {
     if (!bar.contains(document.activeElement)) hide();
   }, 150));
-  addEventListener('scroll', () => { if (bar.classList.contains('show')) place(); }, true);
-  addEventListener('resize', hide);
+  let scrollRaf;
+  addEventListener('scroll', () => {
+    if (!bar.classList.contains('show') || scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => { scrollRaf = 0; place(); });
+  }, true);
+  let resizeT;
+  addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(hide, 150); });
 }
 function fmtDate(ts) {
   const d = new Date(ts);
@@ -514,7 +520,7 @@ async function getMediaHTML(item) {
     const isVideo = (item.mediaType || '').startsWith('video/');
     const tag = isVideo
       ? '<video src="' + item.mediaData + '" controls></video>'
-      : '<img src="' + item.mediaData + '" alt="media" loading="lazy">';
+      : '<img src="' + item.mediaData + '" alt="' + esc(item.title || 'Feed image') + '" loading="lazy">';
     return '<div class="attached-media">' + tag + '</div>';
   }
   // Fallback: legacy items whose blob lives only in this device's IndexedDB
@@ -527,7 +533,7 @@ async function getMediaHTML(item) {
       const isVideo = m.mimeType.startsWith('video/');
       const tag = isVideo
         ? '<video src="' + url + '" controls></video>'
-        : '<img src="' + url + '" alt="media" loading="lazy">';
+        : '<img src="' + url + '" alt="' + esc(item.title || 'Feed image') + '" loading="lazy">';
       return '<div class="attached-media">' + tag + '</div>';
     }
   } catch (e) {}
@@ -694,7 +700,8 @@ async function addPost(title, content) {
     // and shows on every device, while staying under the 1MB API limit.
     post.mediaData = await compressImage(file);
     post.mediaType = 'image/jpeg';
-    await storeMediaBlob(mediaId, await (await fetch(post.mediaData)).blob(), 'image/jpeg');
+    try { await storeMediaBlob(mediaId, await (await fetch(post.mediaData)).blob(), 'image/jpeg'); }
+    catch (e) { console.warn('Local media cache failed (non-fatal):', e); }
     post.mediaRef = mediaId;
   } else if (editingId) {
     const ex = feeds.find(f => f.id === editingId);
