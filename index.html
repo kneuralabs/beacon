@@ -36,7 +36,13 @@
 </head>
 <body>
 
-<!-- ── THEME TOGGLE ── -->
+<!-- ── CORNER CONTROLS ── -->
+<div class="corner-controls">
+<button id="settingsBtn" title="GitHub settings" aria-label="GitHub settings">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--icon)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="8" cy="8" r="2"/><path d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.4 3.4l.7.7M11.9 11.9l.7.7M12.6 3.4l-.7.7M4.1 11.9l-.7.7"/>
+  </svg>
+</button>
 <button id="themeToggle" title="Toggle dark / light mode" aria-label="Toggle theme">
   <!-- sun icon (shown in dark mode) -->
   <svg id="iconSun" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--icon)" stroke-width="1.4" stroke-linecap="round" style="display:none">
@@ -51,6 +57,7 @@
     <path d="M13 10.5A5.5 5.5 0 0 1 5.5 3a5.5 5.5 0 1 0 7.5 7.5z"/>
   </svg>
 </button>
+</div><!-- /.corner-controls -->
 
 <div class="wrap">
 
@@ -62,7 +69,7 @@
     </div>
     <div class="logo-name-wrap">
       <div class="logo-name" id="beaconLogo"><span class="bl" data-i="0">b</span><span class="bl" data-i="1">e</span><span class="bl" data-i="2">a</span><span class="bl" data-i="3">c</span><span class="bl" data-i="4">o</span><span class="bl" data-i="5">n</span></div>
-      <button id="dotBtn" class="dot-btn" title="Admin" style="display:none"></button>
+      <button id="dotBtn" class="dot-btn" title="Admin"></button>
     </div>
     <div class="logo-tag">Internal news from Kneuralabs</div>
 
