@@ -819,6 +819,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       isAdmin = false;
       document.getElementById('adminView').style.display  = 'none';
       document.getElementById('readonlyView').style.display = 'block';
+      document.getElementById('settingsBtn').style.display = 'none';
       renderFeeds();
     } else {
       document.getElementById('magicOverlay').classList.add('open');
@@ -834,6 +835,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('magicError').textContent = '';
       document.getElementById('readonlyView').style.display  = 'none';
       document.getElementById('adminView').style.display = 'block';
+      document.getElementById('settingsBtn').style.display = 'flex';
       renderFeeds();
       if (!ghToken) openTokenPrompt();
     } else {
