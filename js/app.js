@@ -890,6 +890,79 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
 
+  // ── SETTINGS BUTTON (top-bar gear icon, always visible) ──────────────────
+  function openSettings() {
+    const overlay = document.getElementById('tokenSettingsOverlay');
+    const inp     = document.getElementById('tokenSettingsInput');
+    const statusEl = document.getElementById('tokenStatusText');
+    const iconEl   = document.getElementById('tokenStatusIcon');
+    const saveBtn  = document.getElementById('tokenSettingsSaveBtn');
+    inp.value = ghToken ? '••••••••••••••••' : '';
+    inp._dirty = false;
+    inp.addEventListener('input', () => { inp._dirty = true; }, { once: true });
+    if (ghToken) {
+      statusEl.textContent = 'Connected · token stored';
+      statusEl.style.color = 'var(--age1-title)';
+      iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8 6.5,12 13,4"/></svg>';
+    } else {
+      statusEl.textContent = 'No token — read-only';
+      statusEl.style.color = 'var(--muted)';
+      iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="5"/></svg>';
+    }
+    saveBtn.style.display = 'none';
+    overlay.classList.add('open');
+    setTimeout(() => inp.focus(), 80);
+  }
+  function closeSettings() {
+    document.getElementById('tokenSettingsOverlay').classList.remove('open');
+  }
+
+  document.getElementById('settingsBtn').addEventListener('click', openSettings);
+
+  // Also wire the in-admin pill (tokenSettingsBtn already exists in HTML)
+  const inlineSBtn = document.getElementById('tokenSettingsBtn');
+  if (inlineSBtn) inlineSBtn.addEventListener('click', openSettings);
+
+  document.getElementById('tokenSettingsCancelBtn').addEventListener('click', closeSettings);
+
+  document.getElementById('tokenSettingsTestBtn').addEventListener('click', async () => {
+    const inp      = document.getElementById('tokenSettingsInput');
+    const statusEl = document.getElementById('tokenStatusText');
+    const iconEl   = document.getElementById('tokenStatusIcon');
+    const saveBtn  = document.getElementById('tokenSettingsSaveBtn');
+    const tokenVal = (inp._dirty ? inp.value : (ghToken || inp.value)).trim();
+    if (!tokenVal || tokenVal.startsWith('•')) { statusEl.textContent = 'Enter a token first'; statusEl.style.color = 'var(--danger)'; return; }
+    statusEl.textContent = 'Verifying…'; statusEl.style.color = 'var(--muted)';
+    iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1s" repeatCount="indefinite"/></path></svg>';
+    try {
+      const login = await verifyToken(tokenVal);
+      statusEl.textContent = 'Verified as @' + login + ' ✓';
+      statusEl.style.color = 'var(--age1-title)';
+      iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8 6.5,12 13,4"/></svg>';
+      inp._verified = tokenVal;
+      saveBtn.style.display = 'inline-flex';
+    } catch (e) {
+      statusEl.textContent = e.message;
+      statusEl.style.color = 'var(--danger)';
+      iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>';
+      saveBtn.style.display = 'none';
+    }
+  });
+
+  document.getElementById('tokenSettingsSaveBtn').addEventListener('click', async () => {
+    const inp      = document.getElementById('tokenSettingsInput');
+    const statusEl = document.getElementById('tokenStatusText');
+    const tokenVal = inp._verified || (inp._dirty ? inp.value.trim() : ghToken);
+    if (!tokenVal) return;
+    await connectWithToken(tokenVal, statusEl);
+    closeSettings();
+  });
+
+  document.getElementById('tokenSettingsInput').addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSettings();
+    if (e.key === 'Enter') document.getElementById('tokenSettingsTestBtn').click();
+  });
+
   initRichEditor();
 
   // ── BEACON FLIP CLOCK ANIMATION ──
