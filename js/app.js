@@ -302,8 +302,13 @@ const IC = {
 };
 
 // ── INDEXEDDB ──────────────────────────────────────────────────────────────────
-async function openDB() {
-  return new Promise((resolve, reject) => {
+// One shared connection, opened lazily and reused. The previous version opened a
+// fresh IDBDatabase on every read/write (and renderFeeds can fan out one read per
+// legacy-media item), so memoizing avoids dozens of redundant connection opens.
+let _dbPromise = null;
+function openDB() {
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open('BeaconMediaDB', 1);
     req.onerror = () => reject(req.error);
     req.onsuccess = () => resolve(req.result);
@@ -311,7 +316,8 @@ async function openDB() {
       if (!e.target.result.objectStoreNames.contains('media'))
         e.target.result.createObjectStore('media', { keyPath: 'id' });
     };
-  });
+  }).catch(err => { _dbPromise = null; throw err; }); // let a later call retry after a failed open
+  return _dbPromise;
 }
 async function storeMediaBlob(id, blob, mimeType) {
   const db = await openDB();
@@ -480,15 +486,6 @@ function ageBucket(sorted, i) {
 }
 
 // ── MEDIA HTML ────────────────────────────────────────────────────────────────
-function readFileAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
-
 // Center-crop an image to 1:1 (already-square images are kept as-is), then
 // downscale + re-encode so the embedded data URL stays small. This keeps
 // feeds.json under GitHub's 1MB Contents-API limit (a raw phone photo is
@@ -528,6 +525,10 @@ async function getMediaHTML(item) {
   try {
     const m = await getMediaBlob(item.mediaRef);
     if (m && m.blob) {
+      // Revoke the URL minted on a prior render so blob URLs don't pile up across
+      // re-renders (renderFeeds runs at least twice per load). Already-painted
+      // <img> data stays visible — revocation only blocks future fetches.
+      if (item._objectURL) URL.revokeObjectURL(item._objectURL);
       const url = URL.createObjectURL(m.blob);
       item._objectURL = url;
       const isVideo = m.mimeType.startsWith('video/');
