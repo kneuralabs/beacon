@@ -139,6 +139,33 @@ async function repoSave() {
   }
 }
 
+// Serialize commits. Every publish/edit/delete used to fire repoSave() twice —
+// once via save() and once via a second explicit commit call — so two PUTs raced
+// on the same blob SHA. That produced the duplicate "update feeds" commits seen
+// in the history and, worse, burned the single 409-retry in repoSave() that's
+// meant to absorb a *real* external conflict (another device/admin). This runs
+// at most one commit at a time and coalesces anything requested mid-flight into
+// one trailing commit of the latest in-memory feeds, so a burst of edits
+// converges to a single conflict-free commit.
+let _saveInFlight = null;   // promise for the commit currently running
+let _savePending  = false;  // a newer save arrived while a commit was in flight
+function queueRepoSave() {
+  if (!ghToken) return Promise.resolve();
+  if (_saveInFlight) { _savePending = true; return _saveInFlight; }
+  _saveInFlight = (async () => {
+    try {
+      do {
+        _savePending = false;
+        await repoSave();          // always commits the latest feeds snapshot
+      } while (_savePending);      // a save queued during the commit → commit once more
+    } finally {
+      _saveInFlight = null;
+      _savePending  = false;
+    }
+  })();
+  return _saveInFlight;
+}
+
 // DELETE the file from the repo
 async function repoDelete() {
   if (!ghToken) return;
@@ -166,14 +193,14 @@ async function verifyToken(token) {
 
 // ── SINGLE SYNC BUTTON ─────────────────────────────────────────────────────────
 // One ultra-minimal admin button. red = not connected (click → token routine) ·
-// amber = connecting · green = connected (click → commit now; auto-commits every 1 minute).
+// amber = connecting · green = connected (every publish/edit/delete commits to the repo).
 let syncState = 'red';
 const SYNC_IC = {
   red:   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l10 10M11 5.5V3.5a1 1 0 0 0-1-1H8M5 10.5v2a1 1 0 0 0 1 1h2"/></svg>',
   amber: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1s" repeatCount="indefinite"/></path></svg>',
   green: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8.5 6.5,12 13,4.5"/></svg>'
 };
-const SYNC_TITLE = { red:'Connect to repo', amber:'Connecting…', green:'Connected · click to commit now (auto every minute)' };
+const SYNC_TITLE = { red:'Connect to repo', amber:'Connecting…', green:'Connected · changes commit to the repo automatically' };
 
 function setSync(state) {
   syncState = state;
@@ -195,17 +222,7 @@ function openTokenPrompt() {
 }
 function closeTokenPrompt() { document.getElementById('gistOverlay').classList.remove('open'); }
 
-async function commitNow() {
-  if (!ghToken) return;
-  try {
-    await repoSave();
-    showToast('Saved to repo');
-  } catch (e) {
-    showToast('Repo save failed: ' + e.message);
-  }
-}
-
-// Verify a token, load feeds, then lock into auto-commit. Surfaces errors in red.
+// Verify a token, load feeds, then mark connected. Surfaces errors in red.
 async function connectWithToken(tokenVal, statusEl) {
   setSync('amber');
   if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Verifying…'; }
@@ -243,9 +260,12 @@ async function connectGist() {
 
 // ── STORAGE HELPERS ───────────────────────────────────────────────────────────
 
+// One-stop persistence: local cache + a single (serialized) repo commit. This is
+// the only commit path the CRUD actions use — they must NOT trigger a second
+// commit, or the change gets written to the repo twice.
 function save() {
   persistLocal();
-  if (ghToken) repoSave().catch(e => showError('Sync error: ' + e.message));
+  if (ghToken) queueRepoSave().catch(e => showError('Sync error: ' + e.message));
 }
 
 // Write feeds to localStorage WITHOUT the heavy embedded media (base64 data URLs
@@ -718,9 +738,9 @@ async function addPost(title, content) {
   } else {
     feeds.push(post);
   }
+  const wasEditing = !!editingId;          // resetForm() nulls editingId below
   save(); resetForm(); await renderFeeds();
-  showToast(editingId ? "Updated" : "Published");
-  if (ghToken) commitNow();
+  showToast(wasEditing ? "Updated" : "Published");
 }
 
 async function deletePost(id) {
@@ -729,7 +749,6 @@ async function deletePost(id) {
   if (item && item.mediaRef) await deleteMediaBlob(item.mediaRef);
   feeds = feeds.filter(f => f.id !== id);
   save(); await renderFeeds(); showToast("Deleted");
-  if (ghToken) commitNow();
 }
 
 function startEdit(id) {
@@ -889,7 +908,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!confirm("Delete ALL posts?")) return;
     for (const item of feeds) if (item.mediaRef) await deleteMediaBlob(item.mediaRef);
     feeds = []; save(); await renderFeeds(); showToast("All deleted");
-    if (ghToken) commitNow();
   });
 
   document.getElementById('gistCancelBtn').addEventListener('click', closeTokenPrompt);

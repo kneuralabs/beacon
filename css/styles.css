@@ -217,7 +217,7 @@ body{
 .icon-btn--primary svg{stroke:var(--bg)}
 .icon-btn--danger:hover{color:var(--danger);border-color:var(--danger)}
 
-/* Single sync button states: red=offline · amber=connecting · green=connected+auto-committing */
+/* Single sync button states: red=offline · amber=connecting · green=connected (commits on every change) */
 #gistSaveBtn{transition:background .2s,border-color .2s,color .2s,opacity .2s}
 .sync-red{background:#b91c1c;border-color:#b91c1c;color:#fff}
 .sync-red:hover{background:#a11717;border-color:#a11717;color:#fff}
