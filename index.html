@@ -94,12 +94,12 @@
   <div id="gistOverlay" class="magic-overlay">
     <div class="magic-modal" style="width:min(380px,94vw)">
       <div style="font-size:.7rem;letter-spacing:.1em;color:var(--muted);margin-bottom:.8rem;display:flex;align-items:center;gap:.4rem">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1C4.13 1 1 4.13 1 8c0 3.09 2[...]
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1C4.13 1 1 4.13 1 8c0 3.09 2.05 5.71 4.9 6.6M8 1c3.87 0 7 2.13 7 4.76"/></svg>
         GITHUB SYNC · kneuralabs/beacon
       </div>
       <div style="font-size:.72rem;color:var(--muted);margin-bottom:1rem;line-height:1.55">
         Feeds are always read from <strong>kneuralabs/beacon</strong> on every device — no token needed to view.<br>
-        To <strong>publish or edit</strong> posts, provide a token with <code style="background:var(--surface2);padding:.1rem .3rem;border-radius:2px">contents: write</code> permission on that rep[...]
+        To <strong>publish or edit</strong> posts, provide a token with <code style="background:var(--surface2);padding:.1rem .3rem;border-radius:2px">contents: write</code> permission on that repository.
       </div>
       <div style="margin-bottom:.9rem">
         <label style="font-size:.6rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.35rem">Personal Access Token</label>
@@ -219,19 +219,9 @@
           <div class="form-group"><label>Title *</label><input type="text" id="intTitle" maxlength="140" placeholder="Headline…"></div>
 
           <div class="form-group">
-            <label>Posted by</label>
-            <select id="authorRoleSelect">
-              <option value="CEO">Chief Executive Officer</option>
-              <option value="CIO">Chief Information Officer</option>
-              <option value="CTO">Chief Technology Officer</option>
-              <option value="CAIO">Chief Artificial Intelligence Officer</option>
-              <option value="CDAIO">Chief Data &amp; AI Officer</option>
-              <option value="CISO">Chief Information Security Officer</option>
-              <option value="CTrO">Chief Transformation Officer</option>
-              <option value="CDO">Chief Data Officer</option>
-              <option value="CFO">Chief Financial Officer</option>
-              <option value="CEA">Chief Executive Assistant</option>
-            </select>
+            <label for="authorRoleSelect">Posted by</label>
+            <!-- Options are generated from ROLE_LABELS in app.js (single source of truth) -->
+            <select id="authorRoleSelect"></select>
           </div>
 
           <div id="eventFields" style="display:none" class="form-group">

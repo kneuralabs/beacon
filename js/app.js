@@ -5,6 +5,12 @@ const REPO_OWNER  = "kneuralabs";
 const REPO_NAME   = "beacon";
 const REPO_PATH   = "data/feeds.json";
 const REPO_BRANCH = "main";
+// Older (non-featured) posts whose plain-text body exceeds this many characters
+// collapse behind a "Show more…" toggle in the feed.
+const SUMMARY_CLAMP_CHARS = 140;
+// GitHub's Contents API rejects blobs larger than ~1 MB. base64 inflates real
+// bytes by ~4/3, so cap the encoded payload a little above 1 MB of actual data.
+const MAX_FEEDS_BASE64_BYTES = 1.4 * 1024 * 1024;
 let feeds = [], isAdmin = false, editingId = null;
 let ghToken = null;
 
@@ -106,7 +112,7 @@ async function repoSave() {
   const payload = feeds.map(({ _objectURL, ...r }) => r);
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
   // GitHub's Contents API rejects files larger than ~1MB. Fail clearly here.
-  if (content.length > 1.4 * 1024 * 1024) {
+  if (content.length > MAX_FEEDS_BASE64_BYTES) {
     throw new Error('Feeds file too large for the repo (>1MB) — too many embedded images.');
   }
 
@@ -201,7 +207,9 @@ async function commitNow() {
     await repoSave();
     showToast('Saved to repo');
   } catch (e) {
-    showToast('Repo save failed: ' + e.message);
+    // A failed commit means the post only lives locally — surface it loudly
+    // (console + a longer-lived toast) so it isn't missed.
+    showError('Repo save failed: ' + e.message);
   }
 }
 
@@ -243,9 +251,12 @@ async function connectGist() {
 
 // ── STORAGE HELPERS ───────────────────────────────────────────────────────────
 
+// Persist the feed to this device immediately. The repo commit is a separate,
+// explicit step every caller performs via commitNow() right after — keeping it
+// out of save() means one mutation triggers exactly one PUT instead of two
+// racing commits (the second of which used to 409 and retry).
 function save() {
   persistLocal();
-  if (ghToken) repoSave().catch(e => showError('Sync error: ' + e.message));
 }
 
 // Write feeds to localStorage WITHOUT the heavy embedded media (base64 data URLs
@@ -607,10 +618,14 @@ async function renderFeeds() {
   if (!sorted.length) {
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)">No posts yet</div>';
   } else {
+    // Resolve every item's media up front. Embedded (mediaData) media returns
+    // synchronously, but legacy items read a blob from IndexedDB — doing those
+    // reads in parallel avoids serializing one round-trip per legacy post.
+    const mediaHtml = await Promise.all(sorted.map(getMediaHTML));
     let html = '';
     for (let i = 0; i < sorted.length; i++) {
       const item = sorted[i];
-      const media = await getMediaHTML(item);
+      const media = mediaHtml[i];
       const featured = i === 0;
       const age = ageBucket(sorted, i);
       const roleLabel = esc(ROLE_LABELS[item.authorRole] || item.authorRole || '');
@@ -625,7 +640,7 @@ async function renderFeeds() {
       let bodyHtml = '';
       if (item.content) {
         const plainLen = item.content.replace(/<[^>]*>/g, '').length;
-        const collapse = !featured && plainLen > 140;
+        const collapse = !featured && plainLen > SUMMARY_CLAMP_CHARS;
         bodyHtml =
           '<div class="item-content' + (collapse ? ' item-content--clamp' : '') + '"' +
             (poster ? ' style="margin-top:.5rem"' : '') + '>' + sanitizeRich(item.content) + '</div>' +
@@ -791,6 +806,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const savedTheme = localStorage.getItem('beacon_theme') ||
     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   applyTheme(savedTheme);
+
+  // Build the author dropdown from ROLE_LABELS so the code→title mapping lives in
+  // exactly one place (the same map that renders each post's role tag). Done
+  // first, before any async work, so a later failure can't leave it empty.
+  const authorSelect = document.getElementById('authorRoleSelect');
+  if (authorSelect) {
+    authorSelect.innerHTML = Object.entries(ROLE_LABELS)
+      .map(([code, label]) => '<option value="' + code + '">' + esc(label) + '</option>')
+      .join('');
+  }
 
   document.getElementById('themeToggle').addEventListener('click', () => {
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
